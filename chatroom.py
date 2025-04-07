@@ -11,7 +11,7 @@ st.title("Study 1a Chat Group Test")
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# --- SESSION STATE INIT ---
+# --- session initiation ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "entered_chat" not in st.session_state:
@@ -24,7 +24,7 @@ if "trigger_ai_reply" not in st.session_state:
     st.session_state.trigger_ai_reply = False
 
 
-# --- AVATAR UTILS ---
+# --- AI agents utilities ---
 group_members = ["Olivia", "Liam", "Curtis", "Ava", "Shah"]
 
 def avatar_url(name):
@@ -40,16 +40,17 @@ def load_user_logo():
         encoded = base64.b64encode(f.read()).decode()
     return f"data:image/png;base64,{encoded}"
 
-# --- PERSONA MAPPING ---
+
+# --- agent persona mapping ---
 persona = {
-    "Olivia": "You're a casually liberal office colleague. Friendly and talkative.",
-    "Curtis": "You're a sarcastic but progressive friend from university.",
+    "Olivia": "You're a casually liberal colleague, riendly and talkative.",
+    "Curtis": "You're a sarcastic but progressive dude from university.",
     "Liam": "You're a quiet but thoughtful teammate who leans liberal.",
-    "Shah": "You're a curious neutral voice in the group.",
+    "Shah": "You're a curious neutral voice in the group, leans liberal.",
     "Ava": "You're a moderate, polite and skeptical about the conservatives."
 }
 
-# --- INSTRUCTIONS PAGE ---
+# --- instruction page ---
 if not st.session_state.entered_chat:
     st.subheader("Instructions")
     st.markdown("""
@@ -79,7 +80,7 @@ Feel free to jump in at any time.
 
 
 
-# --- MAIN CHAT UI ---
+# --- main chat UI ---
 else:
     st.subheader("Group Chat Begins 💬")
     st.markdown(f"👥 **Members:** {', '.join(group_members)} and **You**")
@@ -98,7 +99,7 @@ else:
             allow_html=True
         )
 
-    # USER INPUT
+    # user input (participant input)
     user_input = st.chat_input("Type your message here...")
     if user_input:
         timestamp = datetime.now().strftime("%H:%M")
@@ -111,7 +112,7 @@ else:
         st.session_state.trigger_ai_reply = True
         st.rerun()
 
-    # AI RESPONSE
+    # AI agent response
     if st.session_state.trigger_ai_reply and st.session_state.user_count <= 6:
         st.session_state.trigger_ai_reply = False
 
@@ -120,7 +121,7 @@ else:
         recent_speakers = {m["speaker"] for m in st.session_state.messages[-5:] if m["role"] == "assistant"}
         available_names = [n for n in group_members if n not in recent_speakers]
 
-        # 🔁 Fallback: if too few left, use full group
+        # fallback: if too few left, use full group
         if len(available_names) < num_replies:
             available_names = list(set(group_members) - recent_speakers)
             num_replies = min(num_replies, len(available_names))
@@ -132,7 +133,7 @@ else:
 
         for i, ai_name in enumerate(ai_names):
             if i == 0:
-                time.sleep(2)  # <-- Thinking delay before the FIRST agent only
+                time.sleep(2)  # <-- fake "thinking" delay before the 1st agent only
 
             with st.chat_message("assistant", avatar=avatar_url(ai_name)):
                 with st.spinner(f"{ai_name} is typing{'.' * random.randint(1, 3)}"):
@@ -149,7 +150,7 @@ else:
                         temperature=0.7
                     )
                     reply = response.choices[0].message.content.strip()
-                    # Recursively remove any group member names at the beginning
+                    # recursively remove any group member names at the beginning
                     while True:
                         for other_name in group_members:
                             if reply.startswith(f"{other_name}:"):
@@ -174,8 +175,8 @@ else:
                     })
         st.rerun()
 
-    # END MESSAGE
+    # END MESSAGE (end the conversation after 6 user inputs)
     user_msg_count = sum(1 for m in st.session_state.messages if m["role"] == "user")
-    if user_msg_count >= 3:
+    if user_msg_count >= 6:
         st.markdown("<hr><p style='text-align:center'><b>Thank you for participating.</b></p>", unsafe_allow_html=True)
         st.stop()
