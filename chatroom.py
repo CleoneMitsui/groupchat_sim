@@ -115,20 +115,24 @@ else:
     # AI agent response
     if st.session_state.trigger_ai_reply and st.session_state.user_count <= 6:
         st.session_state.trigger_ai_reply = False
+        
+        # randomly have 1, 2, or 3 replies at once
+        # num_replies = random.choices([1, 2, 3], weights=[0.7, 0.3, 0.1])[0]
 
-        num_replies = random.choices([1, 2, 3], weights=[0.7, 0.3, 0.1])[0]
+        # recent_speakers = {m["speaker"] for m in st.session_state.messages[-5:] if m["role"] == "assistant"}
+        # available_names = [n for n in group_members if n not in recent_speakers]
 
-        recent_speakers = {m["speaker"] for m in st.session_state.messages[-5:] if m["role"] == "assistant"}
-        available_names = [n for n in group_members if n not in recent_speakers]
+        # # fallback: if too few left, use full group
+        # if len(available_names) < num_replies:
+        #     available_names = list(set(group_members) - recent_speakers)
+        #     num_replies = min(num_replies, len(available_names))
 
-        # fallback: if too few left, use full group
-        if len(available_names) < num_replies:
-            available_names = list(set(group_members) - recent_speakers)
-            num_replies = min(num_replies, len(available_names))
+        # random.shuffle(available_names)
+        # ai_names = available_names[:num_replies]
 
-        random.shuffle(available_names)
-        ai_names = available_names[:num_replies]
-
+        # ensures everyone sends one message
+        ai_names = group_members.copy()
+        random.shuffle(ai_names)  # randomise message order
 
 
         for i, ai_name in enumerate(ai_names):
@@ -146,7 +150,7 @@ else:
 
                     response = client.chat.completions.create(
                         model="gpt-4-turbo",
-                        messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. Stay on the first political or moral topic. If the user changes the topic, steer it gently back without sounding robotic. Be casual and brief (1–3 sentences), and vary your tone and length like real people. Avoid long monologues. Occasionally, end your message with a short, natural question to keep the conversation flowing."}] + context,
+                        messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. Be casual and brief (1–3 sentences), and vary your tone and length like real people. Avoid long monologues. Occasionally, end your message with a short, natural question to keep the conversation flowing."}] + context,
                         temperature=0.7
                     )
                     reply = response.choices[0].message.content.strip()
@@ -173,6 +177,8 @@ else:
                         "content": reply,
                         "timestamp": timestamp
                     })
+            if i < len(ai_names) - 1:
+                time.sleep(random.uniform(1.5, 3.0))
         st.rerun()
 
     # END MESSAGE (end the conversation after 6 user inputs)
