@@ -65,7 +65,9 @@ Feel free to jump in at any time.
         preset_messages = [
             ("Olivia", "Hey, did you all see the thing about the new healthcare bill?"),
             ("Curtis", "Yeah... I honestly don’t get how anyone could support it."),
-            ("Shah", "I feel like it’s just making everything worse.")
+            ("Shah", "I feel like it’s just making everything worse."),
+            ("Liam", "Mmm, I'm not sure what to think yet."),
+            ("Ava", "Same here, still reading up on it.")
         ]
         for speaker, line in preset_messages:
             st.session_state.messages.append({
