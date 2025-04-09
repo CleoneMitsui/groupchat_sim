@@ -11,6 +11,7 @@ st.title("Study 1a Chat Group Test")
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+
 # --- session initiation ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -25,7 +26,7 @@ if "trigger_ai_reply" not in st.session_state:
 
 
 # --- AI agents utilities ---
-group_members = ["Olivia", "Liam", "Curtis", "Ava", "Shah"]
+group_members = ["Olivia", "Curtis", "Ava"]
 
 def avatar_url(name):
     try:
@@ -43,11 +44,19 @@ def load_user_logo():
 
 # --- agent persona mapping ---
 persona = {
-    "Olivia": "You're a casually liberal colleague, riendly and talkative.",
-    "Curtis": "You're a sarcastic but progressive dude from university.",
-    "Liam": "You're a quiet but thoughtful teammate who leans liberal.",
-    "Shah": "You're a curious neutral voice in the group, leans liberal.",
-    "Ava": "You're a moderate, polite and skeptical about the conservatives."
+    "Olivia": (
+        "You're a warm and socially active liberal who often brings up human stories, empathy, and lived experiences. "
+        "You speak casually and are very expressive, with a strong sense of fairness and inclusion."
+    ),
+    "Curtis": (
+        "You're a sharp, sarcastic progressive who follows politics closely and isn’t afraid to critique conservative rhetoric. "
+        "You speak in a witty, slightly cynical tone, often using metaphors or pop culture references to make a point."
+    ),
+    "Ava": (
+        "You're a policy-savvy liberal who prefers calm, reasoned discussion. "
+        "You value evidence and long-term thinking, and you’re quick to point out slippery logic in arguments. "
+        "Your tone is polite but firm — you speak like someone who reads think pieces and congressional reports for fun."
+    )
 }
 
 # --- instruction page ---
@@ -60,15 +69,23 @@ Some of your colleagues have created a **casual chat group**. It is not a profes
 You've just been added to this group chat.
 When you enter, you’ll first see the last few messages that have already taken place.
 Feel free to jump in at any time.
+
+Please enter your name or nickname before joining.
     """)
-    if st.button("Enter Chat"):
+
+    user_name = st.text_input("Enter your name or nickname", key="nickname_input")
+
+    if user_name:
+        st.session_state.nickname = user_name
+
+    if st.button("Enter Chat", disabled=not user_name):
         preset_messages = [
-            ("Olivia", "Hey, did you all see the thing about the new healthcare bill?"),
-            ("Curtis", "Yeah... I honestly don’t get how anyone could support it."),
-            ("Shah", "I feel like it’s just making everything worse."),
-            ("Liam", "Mmm, I'm not sure what to think yet."),
-            ("Ava", "Same here, still reading up on it.")
-        ]
+            ("Curtis", "Hey, did you all see the thing about the new healthcare bill?"),
+            ("Olivia", "Yeah... I honestly don’t get how anyone could support it."),
+            # ("Liam", "I feel like it’s just making everything worse."),
+            # ("Shah", "Mmm, it’s definitely leaning in a worrying direction."),
+            ("Ava", f"Same here, the priorities seem totally off. Hey {user_name}, welcome to the group! How's it going? Anything thoughts on the issue?")
+    ]
         for speaker, line in preset_messages:
             st.session_state.messages.append({
                 "role": "assistant",
@@ -144,47 +161,126 @@ else:
             if i == 0:
                 time.sleep(2)  # <-- fake "thinking" delay before the 1st agent only
 
-            with st.chat_message("assistant", avatar=avatar_url(ai_name)):
-                with st.spinner(f"{ai_name} is typing{'.' * random.randint(1, 3)}"):
-                    time.sleep(random.uniform(2.5, 4.5))
-                    context = [
-                        {"role": "assistant", "content": m["content"]} if m["role"] == "assistant"
-                        else {"role": "user", "content": m["content"]}
-                        for m in st.session_state.messages[-6:]
-                    ]
+            # with st.chat_message("assistant"):
+            with st.spinner(f"{ai_name} is typing{'.' * random.randint(1, 3)}"):
+                time.sleep(random.uniform(2.5, 4.5))
+                context = [
+                    {"role": "assistant", "content": m["content"]} if m["role"] == "assistant"
+                    else {"role": "user", "content": m["content"]}
+                    for m in st.session_state.messages[-6:]
+                ]
 
-                    response = client.chat.completions.create(
-                        model="gpt-4-turbo",
-                        messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. Be casual and brief (1–3 sentences), and vary your tone and length like real people. Avoid long monologue."}] + context,
-                        temperature=0.7
-                    )
-                    reply = response.choices[0].message.content.strip()
-                    # recursively remove any group member names at the beginning
-                    while True:
-                        for other_name in group_members:
-                            if reply.startswith(f"{other_name}:"):
-                                reply = reply[len(f"{other_name}:"):].strip()
-                                break
-                        else:
-                            break  # no prefix matched
+                response = client.chat.completions.create(
+                    model="gpt-4-turbo",
+                    messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. "
+                                "Be casual and brief (1–3 sentences), and vary your tone and length like real people. "
+                                "Avoid long monologue. React to the group conversation naturally, but do not mention "
+                                f"{st.session_state.nickname} or ask them anything directly. "
+                                "Do not change the topic unless the participant clearly initiates a new one. "
+                                "Stay focused and stay liberal on the current topic and continue building on what others have said. "
+                                "Avoid bringing up unrelated topics like weekend plans or personal activities."}] + context,
+                    temperature=0.7
+                )
+                reply = response.choices[0].message.content.strip()
+                # recursively remove any group member names at the beginning
+                while True:
+                    for other_name in group_members:
+                        if reply.startswith(f"{other_name}:"):
+                            reply = reply[len(f"{other_name}:"):].strip()
+                            break
+                    else:
+                        break  # no prefix matched
 
-                    timestamp = datetime.now().strftime("%H:%M")
-                    message(
-                        f"**{ai_name}:** {reply}\n\n<i style='color:gray; font-size: 0.8em'>{timestamp}</i>",
-                        is_user=False,
-                        key=f"ai_msg_{len(st.session_state.messages)}_{ai_name}",
-                        logo=avatar_url(ai_name),
-                        allow_html=True
-                    )
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "speaker": ai_name,
-                        "content": reply,
-                        "timestamp": timestamp
-                    })
+                timestamp = datetime.now().strftime("%H:%M")
+                message(
+                    f"**{ai_name}:** {reply}\n\n<i style='color:gray; font-size: 0.8em'>{timestamp}</i>",
+                    is_user=False,
+                    key=f"ai_msg_{len(st.session_state.messages)}_{ai_name}",
+                    logo=avatar_url(ai_name),
+                    allow_html=True
+                )
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "speaker": ai_name,
+                    "content": reply,
+                    "timestamp": timestamp
+                })
             if i < len(ai_names) - 1:
                 time.sleep(random.uniform(1.5, 3.0))
+
+        # END of 5 agents' replies → do 1 more follow-up
+        # get last agent speaker (the final agent who replied)
+        last_assistant = None
+        for m in reversed(st.session_state.messages):
+            if m["role"] == "assistant":
+                last_assistant = m["speaker"]
+                break
+
+        # make sure the follow-up speaker is not the last assistant
+        followup_candidates = [name for name in group_members if name != last_assistant]
+        followup_speaker = random.choice(followup_candidates)
+
+        time.sleep(1.5)
+
+        # with st.chat_message("assistant"):
+        with st.spinner(f"{followup_speaker} is typing..."):
+            time.sleep(random.uniform(2.5, 4.0))
+            user_name = st.session_state.get("nickname", "you")
+            
+            prompt_styles = [
+                "Pose a friendly question to {name} to invite them into the conversation.",
+                "Make a casual observation that might get {name} to jump in.",
+                "Gently nudge {name} to share what they think.",
+                "Mention {name} naturally in a way that encourages them to respond.",
+                "Say something that includes {name} and would likely prompt a reply, even if not a question."
+            ]
+            style = random.choice(prompt_styles)
+            followup_prompt = (
+                f"{persona[followup_speaker]} You're in a casual work chat group. "
+                "Be casual and brief (1–3 sentences), and vary your tone and length like real people. "
+                "Do not change the topic unless the participant clearly initiates a new one. "
+                "Stay focused and stay liberal on the current topic and continue building on what others have said. "
+                "Avoid bringing up unrelated topics like weekend plans or personal activities. "
+                f"Use {st.session_state.nickname}'s name in a natural way to nudge them to join the conversation. "
+                f"{style.replace('{name}', st.session_state.nickname)}"
+            )
+
+
+            context = []
+            for m in st.session_state.messages:
+                if m["role"] == "assistant":
+                    context.append({"role": "assistant", "content": m["content"]})
+
+            # (read the last 20 messages)
+            context = context[-20:]
+
+
+            response = client.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=[{"role": "system", "content": followup_prompt}] + context,
+                temperature=0.8
+            )
+            reply = response.choices[0].message.content.strip()
+
+            timestamp = datetime.now().strftime("%H:%M")
+            message(
+                f"**{followup_speaker}:** {reply}\n\n<i style='color:gray; font-size: 0.8em'>{timestamp}</i>",
+                is_user=False,
+                key=f"ai_msg_{len(st.session_state.messages)}_{followup_speaker}",
+                logo=avatar_url(followup_speaker),
+                allow_html=True
+            )
+            st.session_state.messages.append({
+                "role": "assistant",
+                "speaker": followup_speaker,
+                "content": reply,
+                "timestamp": timestamp
+            })
+
         st.rerun()
+
+    
+
 
     # END MESSAGE (end the conversation after 6 user inputs)
     user_msg_count = sum(1 for m in st.session_state.messages if m["role"] == "user")
