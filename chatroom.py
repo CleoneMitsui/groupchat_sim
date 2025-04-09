@@ -134,6 +134,9 @@ else:
         ai_names = group_members.copy()
         random.shuffle(ai_names)  # randomise message order
 
+        # store recent assistant replies to avoid repetition
+        recent_ai_texts = [m["content"] for m in st.session_state.messages if m["role"] == "assistant"][-10:]
+
 
         for i, ai_name in enumerate(ai_names):
             if i == 0:
@@ -150,7 +153,7 @@ else:
 
                     response = client.chat.completions.create(
                         model="gpt-4-turbo",
-                        messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. Be casual and brief (1–3 sentences), and vary your tone and length like real people. Avoid long monologues. Occasionally, end your message with a short, natural question to keep the conversation flowing."}] + context,
+                        messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. Be casual and brief (1–3 sentences), and vary your tone and length like real people. Avoid long monologue."}] + context,
                         temperature=0.7
                     )
                     reply = response.choices[0].message.content.strip()
