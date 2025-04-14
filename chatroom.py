@@ -26,7 +26,7 @@ if "trigger_ai_reply" not in st.session_state:
 
 
 # --- AI agents utilities ---
-group_members = ["Olivia", "Curtis", "Ava"]
+group_members = ["Olivia", "Curtis", "Mark"]
 
 def avatar_url(name):
     try:
@@ -52,10 +52,10 @@ persona = {
         "You're a sharp, sarcastic progressive who follows politics closely and isn’t afraid to critique conservative rhetoric. "
         "You speak in a witty, slightly cynical tone, often using metaphors or pop culture references to make a point."
     ),
-    "Ava": (
+    "Mark": (
         "You're a policy-savvy liberal who prefers calm, reasoned discussion. "
         "You value evidence and long-term thinking, and you’re quick to point out slippery logic in arguments. "
-        "Your tone is polite but firm — you speak like someone who reads think pieces and congressional reports for fun."
+        "Your tone is polite but firm. You speak like someone who reads think pieces and congressional reports for fun."
     )
 }
 
@@ -80,11 +80,11 @@ Please enter your name or nickname before joining.
 
     if st.button("Enter Chat", disabled=not user_name):
         preset_messages = [
-            ("Curtis", "Hey, did you all see the thing about the new healthcare bill?"),
-            ("Olivia", "Yeah... I honestly don’t get how anyone could support it."),
+            ("Curtis", "Hey, so there's another debate flaring up about gun laws. I honestly can't believe people are still arguing over it."),
+            ("Olivia", "Exactly, how many more shootings do we need before we pass real reform?"),
             # ("Liam", "I feel like it’s just making everything worse."),
             # ("Shah", "Mmm, it’s definitely leaning in a worrying direction."),
-            ("Ava", f"Same here, the priorities seem totally off. Hey {user_name}, welcome to the group! How's it going? Anything thoughts on the issue?")
+            ("Mark", f"Totally. It's like logic takes a back seat. Anyway, hey {user_name}, welcome to the group! How's it going? Anything thoughts on the issue?")
     ]
         for speaker, line in preset_messages:
             st.session_state.messages.append({
@@ -134,20 +134,6 @@ else:
     # AI agent response
     if st.session_state.trigger_ai_reply and st.session_state.user_count <= 6:
         st.session_state.trigger_ai_reply = False
-        
-        # randomly have 1, 2, or 3 replies at once
-        # num_replies = random.choices([1, 2, 3], weights=[0.7, 0.3, 0.1])[0]
-
-        # recent_speakers = {m["speaker"] for m in st.session_state.messages[-5:] if m["role"] == "assistant"}
-        # available_names = [n for n in group_members if n not in recent_speakers]
-
-        # # fallback: if too few left, use full group
-        # if len(available_names) < num_replies:
-        #     available_names = list(set(group_members) - recent_speakers)
-        #     num_replies = min(num_replies, len(available_names))
-
-        # random.shuffle(available_names)
-        # ai_names = available_names[:num_replies]
 
         # ensures everyone sends one message
         ai_names = group_members.copy()
@@ -156,7 +142,66 @@ else:
         # store recent assistant replies to avoid repetition
         recent_ai_texts = [m["content"] for m in st.session_state.messages if m["role"] == "assistant"][-10:]
 
+        # detect if someone was directly called
+        def get_called_name(messages, members):
+            import re
+            for m in reversed(messages[-3:]):  # check recent messages
+                if m["role"] == "user":
+                    source = m["content"]
+                elif m["role"] == "assistant" and m.get("speaker") not in members:
+                    source = m["content"]
+                else:
+                    continue  # skip AI agents talking to others (self-mentions)
+                for name in members:
+                    pattern = re.compile(rf"\b{name}\b", re.IGNORECASE)
+                    if pattern.search(source):
+                        return name
+            return None
 
+
+
+        # get who was called
+        called_name = get_called_name(st.session_state.messages, group_members)
+
+       
+
+        # add a helper to let GPT infer who should respond
+        def infer_recipient(messages):
+            context = messages[-6:]  
+            chat = "\n".join(
+                [f"{m.get('speaker', 'You')}: {m['content']}" for m in context]
+            )
+            system_prompt = (
+                "You are a reasoning agent in a group chat. "
+                "Given the recent messages, infer who should be the next person to respond. "
+                "Only respond with one of these names: Olivia, Curtis, Mark — or respond with 'all' if it should be general."
+            )
+            response = client.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": chat}
+                ],
+                temperature=0.3
+            )
+            reply = response.choices[0].message.content.strip()
+            return reply
+
+        recipient = infer_recipient(st.session_state.messages)
+        if recipient in group_members:
+            ai_names = [recipient]
+        else:
+            ai_names = group_members.copy()
+            random.shuffle(ai_names)
+
+         # if someone was called out by name, force them to respond and skip the rest
+        if called_name and called_name in group_members:
+            ai_names = [called_name]  # only that person replies
+        else:
+            ai_names = group_members.copy()
+            random.shuffle(ai_names)
+
+        # loop
         for i, ai_name in enumerate(ai_names):
             if i == 0:
                 time.sleep(2)  # <-- fake "thinking" delay before the 1st agent only
