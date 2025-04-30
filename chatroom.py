@@ -282,10 +282,14 @@ else:
             style = random.choice(prompt_styles)
             followup_prompt = (
                 f"{persona[followup_speaker]} You're in a casual work chat group. "
-                "Be casual and brief (1–3 sentences), and vary your tone and length like real people. "
+                "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
+                "Vary your message length. Some replies should be one short sentence. Some can be longer. Avoid sounding robotic or formulaic."
                 "Do not change the topic unless the participant clearly initiates a new one. "
                 "Stay focused and stay liberal on the current topic and continue building on what others have said. "
+                "You are a liberal. Maintain your liberal stance even if others express centrist views. You can acknowledge, but do not shift your position. Stay polite and constructive, but firm in your ideological beliefs."
                 "Avoid bringing up unrelated topics like weekend plans or personal activities. "
+                "Avoid repeating points already said. Don’t restate your own prior comments."
+                f"Your teammate’s name is Olivia, Curtis, and Mark. Do not invent or substitute any other names. "
                 f"Use {st.session_state.nickname}'s name in a natural way to nudge them to join the conversation. "
                 f"{style.replace('{name}', st.session_state.nickname)}"
             )
@@ -324,11 +328,53 @@ else:
 
         st.rerun()
 
-    
-
-
-    # END MESSAGE (end the conversation after 6 user inputs)
     user_msg_count = sum(1 for m in st.session_state.messages if m["role"] == "user")
-    if user_msg_count >= 6:
+    if user_msg_count >= 6 and not st.session_state.get("final_block_executed", False):
+        st.session_state.final_block_executed = True  # avoid running again after rerun()
+
+        import pandas as pd
+        from pathlib import Path
+
+        # -- Save chat messages to CSV --
+        records = []
+        for msg in st.session_state.messages:
+            records.append({
+                "prolific_id": st.query_params.get("PROLIFIC_PID", ["unknown"])[0],  # capture from URL
+                "nickname": st.session_state.get("nickname", "unknown"),
+                "role": msg["role"],
+                "speaker": msg.get("speaker", "user") if msg["role"] == "assistant" else "user",
+                "content": msg["content"],
+                "timestamp": msg["timestamp"]
+            })
+
+        # Save to file
+        csv_path = Path("chat_responses.csv")
+        df = pd.DataFrame(records)
+        if csv_path.exists():
+            df.to_csv(csv_path, mode="a", header=False, index=False)
+        else:
+            df.to_csv(csv_path, index=False)
+
+        # -- Redirect message to Prolific --
+        PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete?cc=CJQL982C"  # replace
+
         st.markdown("<hr><p style='text-align:center'><b>Thank you for participating.</b></p>", unsafe_allow_html=True)
+        st.markdown(
+            f"<p style='text-align:center'><a href='{PROLIFIC_COMPLETION_URL}' target='_blank'>"
+            f"<button style='font-size:18px;'>Click here to complete the study on Prolific</button></a></p>",
+            unsafe_allow_html=True
+        )
+
+        # (Optional) Download CSV from sidebar (for you to check later)
+        with open("chat_responses.csv", "rb") as f:
+            st.sidebar.download_button("⬇️ Download all responses", f, file_name="chat_responses.csv")
+
+        # Stop app execution
         st.stop()
+
+
+    # # END MESSAGE (end the conversation after 6 user inputs)
+    # user_msg_count = sum(1 for m in st.session_state.messages if m["role"] == "user")
+    # if user_msg_count >= 6:
+    #     st.markdown("<hr><p style='text-align:center'><b>Thank you for participating.</b></p>", unsafe_allow_html=True)
+    #     st.stop()
