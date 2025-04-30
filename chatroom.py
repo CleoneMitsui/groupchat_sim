@@ -177,7 +177,7 @@ else:
                 "Only respond with one of these names: Olivia, Curtis, Mark — or respond with 'all' if it should be general."
             )
             response = client.chat.completions.create(
-                model="gpt-4-turbo",
+                model="gpt-4.1",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": chat}
@@ -216,7 +216,7 @@ else:
                 ]
 
                 response = client.chat.completions.create(
-                    model="gpt-4-turbo",
+                    model="gpt-4.1",
                     messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. "
                                 "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
                                 "Avoid long monologue. React to the group conversation naturally, but do not mention "
@@ -305,7 +305,7 @@ else:
 
 
             response = client.chat.completions.create(
-                model="gpt-4-turbo",
+                model="gpt-4.1",
                 messages=[{"role": "system", "content": followup_prompt}] + context,
                 temperature=0.8
             )
