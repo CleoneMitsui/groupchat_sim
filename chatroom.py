@@ -218,7 +218,7 @@ else:
                 response = client.chat.completions.create(
                     model="gpt-4-turbo",
                     messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. "
-                                "Be casual and brief (1–3 sentences), and vary your tone and length like real people. "
+                                "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
                                 "Avoid long monologue. React to the group conversation naturally, but do not mention "
                                 f"{st.session_state.nickname} or ask them anything directly. "
                                 "Do not change the topic unless the participant clearly initiates a new one. "
@@ -329,13 +329,13 @@ else:
         st.rerun()
 
     user_msg_count = sum(1 for m in st.session_state.messages if m["role"] == "user")
-    if user_msg_count >= 6 and not st.session_state.get("final_block_executed", False):
+    if user_msg_count >= 3 and not st.session_state.get("final_block_executed", False):
         st.session_state.final_block_executed = True  # avoid running again after rerun()
 
         import pandas as pd
         from pathlib import Path
 
-        # -- Save chat messages to CSV --
+        # -- save chat messages to CSV --
         records = []
         for msg in st.session_state.messages:
             records.append({
@@ -347,7 +347,7 @@ else:
                 "timestamp": msg["timestamp"]
             })
 
-        # Save to file
+        # save to file
         csv_path = Path("chat_responses.csv")
         df = pd.DataFrame(records)
         if csv_path.exists():
@@ -365,11 +365,10 @@ else:
             unsafe_allow_html=True
         )
 
-        # (Optional) Download CSV from sidebar (for you to check later)
-        with open("chat_responses.csv", "rb") as f:
-            st.sidebar.download_button("⬇️ Download all responses", f, file_name="chat_responses.csv")
+        # # (optional) download CSV from sidebar (for you to check later)
+        # with open("chat_responses.csv", "rb") as f:
+        #     st.sidebar.download_button("⬇️ Download all responses", f, file_name="chat_responses.csv")
 
-        # Stop app execution
         st.stop()
 
 
