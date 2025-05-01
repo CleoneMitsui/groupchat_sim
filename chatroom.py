@@ -201,6 +201,10 @@ else:
             ai_names = group_members.copy()
             random.shuffle(ai_names)
 
+        # choose 1–3 AI responders per round
+        num_responders = random.randint(1, 3)
+        ai_names = random.sample(group_members, k=num_responders)
+
         # loop
         for i, ai_name in enumerate(ai_names):
             if i == 0:
@@ -253,7 +257,7 @@ else:
             if i < len(ai_names) - 1:
                 time.sleep(random.uniform(1.5, 3.0))
 
-        # END of 5 agents' replies → do 1 more follow-up
+        # END of 1-3 agents' replies → do 1 more follow-up
         # get last agent speaker (the final agent who replied)
         last_assistant = None
         for m in reversed(st.session_state.messages):
