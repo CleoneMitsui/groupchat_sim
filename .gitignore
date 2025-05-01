@@ -2,3 +2,5 @@
 .env
 secrets/
 .streamlit/secrets.toml
+*.json
+.streamlit/secrets.toml
