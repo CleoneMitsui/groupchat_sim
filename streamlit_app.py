@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
+# from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from google.oauth2 import service_account
 import gspread
@@ -13,7 +13,7 @@ if "page" not in st.session_state:
     st.session_state.page = "intro"
 
 # connect to google sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
+# conn = st.connection("gsheets", type=GSheetsConnection)
 
 # helper to go to next page
 def next_page(new_page):
