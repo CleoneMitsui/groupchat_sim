@@ -1,16 +1,19 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+from google.oauth2 import service_account
+import gspread
+from gspread.exceptions import WorksheetNotFound
 
 # set page config
 st.set_page_config(page_title="Chatroom Study", page_icon="💬")
 
-# from streamlit.runtime.scriptrunner import get_script_run_ctx
-# ctx = get_script_run_ctx()
-
 # initialise page tracker
 if "page" not in st.session_state:
     st.session_state.page = "intro"
+
+# connect to google sheets
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 # helper to go to next page
 def next_page(new_page):
@@ -61,7 +64,6 @@ elif st.session_state.page == "chat":
     import chatroom
     chatroom.render_chat() 
 
-
 # post-survey page
 elif st.session_state.page == "post":
     # value mappings
@@ -79,32 +81,47 @@ elif st.session_state.page == "post":
         "Doctorate (e.g., PhD, EdD)": 8
     }
 
-    # prepare data
-    demo_data = {
-        "PID": st.session_state.demographics["prolific_id"],
-        "Age": st.session_state.demographics["age"],
-        "Sex": GENDER_MAP[st.session_state.demographics["gender"]],
-        "Ethnicity": ETHNICITY_MAP[st.session_state.demographics["ethnicity"]],
-        "Education": EDUCATION_MAP[st.session_state.demographics["education"]]
-    }
+    try:
+        # Create credentials from Streamlit secrets
+        credentials = service_account.Credentials.from_service_account_info(
+            st.secrets["connections"]["gsheets"],
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        gc = gspread.authorize(credentials)
+        sheet = gc.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
+        
+        # Get or create worksheet
+        try:
+            worksheet = sheet.worksheet("StudyData")
+        except WorksheetNotFound:
+            worksheet = sheet.add_worksheet("StudyData", rows=1000, cols=8)
+            worksheet.append_row([
+                "PID", "Age", "Sex", "Ethnicity", "Education",
+                "Speaker", "Content", "Timestamp"
+            ])
 
-    # convert messages to dataframe
-    rows = []
-    for msg in st.session_state.messages:
-        rows.append({
-            **demo_data,
-            "Speaker": 1 if msg["role"] == "user" else 0,
-            "Content": msg["content"],
-            "Timestamp": msg["timestamp"]
-        })
+        # prepare data
+        base_data = [
+            st.session_state.demographics["prolific_id"],
+            st.session_state.demographics["age"],
+            GENDER_MAP[st.session_state.demographics["gender"]],
+            ETHNICITY_MAP[st.session_state.demographics["ethnicity"]],
+            EDUCATION_MAP[st.session_state.demographics["education"]]
+        ]
+
+   
+        # Append all messages using gspread
+        for msg in st.session_state.messages:
+            row = base_data + [
+                1 if msg["role"] == "user" else 0,  # Speaker code
+                msg["content"],
+                msg["timestamp"]
+            ]
+            worksheet.append_row(row)
+
+    except Exception as e:
+        st.error(f"Error saving data: {str(e)}")
     
-    # write to Google Sheets
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    conn.append(  
-        worksheet="StudyData",
-        data=pd.DataFrame(rows)
-    )
-
     next_page("thankyou")
 
 # end page
