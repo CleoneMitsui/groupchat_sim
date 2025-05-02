@@ -1,5 +1,5 @@
-streamlit
+streamlit>=1.28
 openai>=1.0.0
-streamlit-chat
 pandas
+streamlit-chat
 streamlit-gsheets
