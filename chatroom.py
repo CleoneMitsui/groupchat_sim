@@ -8,11 +8,11 @@ import time
 import random
 import base64
 
-if "awaiting_post" not in st.session_state:
-    st.session_state.awaiting_post = False
 
 def render_chat():
-    # st.title("Group Chat Begins")
+    if "awaiting_post" not in st.session_state:
+        st.session_state.awaiting_post = False
+
 
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
