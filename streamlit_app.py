@@ -25,10 +25,31 @@ if st.session_state.page == "intro":
     st.title("Welcome to the Study")
     st.markdown("""
     You are being invited to participate in a research study conducted by ...
+                
+    If you have any questions or concerns about this study, feel free to contact the researchers via Prolific system.
 
-    This study explores how people interact in casual group conversations. The study will take approximately 5 minutes.
+    **Purpose of the Study:** This study explores how people interact in casual group conversations. 
+    
+    **Procedures:** If you volunteer to participate in this study, you will complete a brief online interaction. 
+                The process takes approximately 5 minutes to complete.
+    
+    **Requirements:** All participants must be Prolific participants, and be at least 18 years of age.
+    
+    **Potential Risks and Discomforts:** You may get tired, but it should not exceed those experienced in everyday life.
 
-    Your responses will remain anonymous, and all data will be stored securely.
+    **Potential Benefits to Participants and/or to Society:** You will receive no personal benefits for participating (other than compensation – see below). Your participation will contribute to ongoing academic research.
+
+    **Compensation for Participants:** For participating in this study, you will receive a base pay of £X.XX.
+    
+    **Confidentiality:** This study is conducted solely for academic research purposes. Therefore, the data collected from this study will be anonymised to ensure confidentiality, and no analysis will be performed that could lead to identification of individuals. While the raw data may be disclosed upon submission to academic journals, it will not be made public in a manner that could identify individuals. In the case that the data is not made public, the data will be retained by the researchers for up to 30 years before permanently deleted.
+
+    **Participation and Withdrawal:** Participation in this study is not obligatory. Participants have the right to withdraw from the study at any point. Should you decide to discontinue the participation, you may do so by closing the browser. Data that is partially completed will be temporarily saved online but will be promptly discarded and not be subjected to analysis.
+
+    **Rights of Research Participants:** This project has been reviewed by the XXX Research Ethics Board for research involving human participants.
+
+    If you choose to continue to the study, the experimenter will assume that you consent to participate in this research.
+
+    Note: Please note that you can print a copy of this consent form for your records.
 
     If you agree to participate, click below to begin.
     """)
@@ -40,14 +61,26 @@ elif st.session_state.page == "demographics":
     st.title("About You")
     with st.form("demo_form"):
         pid = st.query_params.get("PROLIFIC_PID", ["unknown"])[0]
-        age = st.selectbox("Your age", list(range(18, 80)))
-        gender = st.radio("Gender", ["Male", "Female", "Other"], index=None)
-        ethnicity = st.selectbox("Ethnicity", ["White", "Black", "Asian", "Native American", "Hispanic", "Other"], index=None)
-        education = st.selectbox("Highest education level", [
+        
+        age_options = ["Choose an option"] + list(range(18, 80))
+        gender_options = ["Choose an option", "Male", "Female", "Other"]
+        ethnicity_options = ["Choose an option", "White", "Black", "Asian", "Native American", "Hispanic", "Other"]
+        education_options = [
+            "Choose an option",
             "Less than high school", "High school graduate", "Some college, no degree",
-            "Associate degree (e.g., AA, AS)", "Bachelor's degree (e.g., BA, BS)", "Master's degree (e.g., MA, MS, MEd)", "Professional degree (e.g., MD, JD)", "Doctorate (e.g., PhD, EdD)"], index=None)
+            "Associate degree (e.g., AA, AS)", "Bachelor's degree (e.g., BA, BS)",
+            "Master's degree (e.g., MA, MS, MEd)", "Professional degree (e.g., MD, JD)",
+            "Doctorate (e.g., PhD, EdD)"
+        ]
+
+        age = st.selectbox("Please provide your age.", age_options, index=0)
+        gender = st.selectbox("Please indicate your gender.", gender_options, index=0)
+        ethnicity = st.selectbox("Which of the following category best describes you?", ethnicity_options, index=0)
+        education = st.selectbox("What is the highest level of education you have completed?", education_options, index=0)
+
         submitted = st.form_submit_button("Next")
-        if submitted and gender and ethnicity and education:
+
+        if submitted and all(x != "Choose an option" for x in [gender, ethnicity, education, age]):
             st.session_state.demographics = {
                 "prolific_id": pid,
                 "age": age,
@@ -58,6 +91,7 @@ elif st.session_state.page == "demographics":
             next_page("chat")
         elif submitted:
             st.warning("Please answer all questions before continuing.")
+
 
 # chatroom page 
 elif st.session_state.page == "chat":
@@ -127,6 +161,7 @@ elif st.session_state.page == "post":
 # end page
 elif st.session_state.page == "thankyou":
     st.title("Thank you for your participation!")
+    # st.subheader("That is the end of the study.")
     st.markdown("""
     Your responses have been recorded.
 

@@ -2,9 +2,14 @@ import streamlit as st
 from openai import OpenAI
 from streamlit_chat import message
 from datetime import datetime
+from topics import get_random_topic_and_messages
+from personas import personas
 import time
 import random
 import base64
+
+if "awaiting_post" not in st.session_state:
+    st.session_state.awaiting_post = False
 
 def render_chat():
     # st.title("Group Chat Begins")
@@ -43,21 +48,27 @@ def render_chat():
 
 
     # --- agent persona mapping ---
-    persona = {
-        "Olivia": (
-            "You're a warm and socially active liberal who often brings up human stories, empathy, and lived experiences. "
-            "You speak casually and are very expressive, with a strong sense of fairness and inclusion."
-        ),
-        "Curtis": (
-            "You're a sharp, sarcastic progressive who follows politics closely and isn’t afraid to critique conservative rhetoric. "
-            "You speak in a witty, slightly cynical tone, often using metaphors or pop culture references to make a point."
-        ),
-        "Mark": (
-            "You're a policy-savvy liberal who prefers calm, reasoned discussion. "
-            "You value evidence and long-term thinking, and you’re quick to point out slippery logic in arguments. "
-            "Your tone is polite but firm. You speak like someone who reads think pieces and congressional reports for fun."
-        )
-    }
+    # persona = {
+    #     "Olivia": (
+    #         "You are Olivia: a warm, socially active liberal who brings up human stories and lived experiences. "
+    #         "You speak casually and openly, with a strong sense of fairness and inclusion. "
+    #         "You're expressive and tend to emotionally connect with others. "
+    #         "You often respond with empathy, even in serious political discussions."
+    #     ),
+    #     "Curtis": (
+    #         "You are Curtis: a sharp, sarcastic progressive who follows politics closely. "
+    #         "You often make biting remarks or dry jokes. You dislike centrist waffling and call out nonsense. "
+    #         "You like referencing pop culture or news headlines to drive a point home. "
+    #         "Always keep your tone brief, clever and cutting."
+    #     ),
+    #     "Mark": (
+    #         "You are Mark: a policy-savvy liberal who prefers calm, reasoned discussion. "
+    #         "You value evidence, structure, and long-term thinking. "
+    #         "You’re polite but firm, and you tend to sound like someone who reads congressional reports for fun. "
+    #         "When others jump to conclusions, you gently push back using facts and logic."
+    #     )
+    # }
+
 
     # --- instruction page ---
     if not st.session_state.entered_chat:
@@ -73,19 +84,40 @@ def render_chat():
     Please enter your name or nickname before joining.
         """)
 
-        user_name = st.text_input("Enter your name or nickname", key="nickname_input")
+        user_name = st.text_input("Enter your name or nickname (max 15 characters)", key="nickname_input")
 
         if user_name:
-            st.session_state.nickname = user_name
+            if len(user_name) > 15:
+                st.warning("Nickname must be 15 characters or fewer.")
+            else:
+                st.session_state.nickname = user_name
 
-        if st.button("Enter Chat", disabled=not user_name):
-            preset_messages = [
-                ("Curtis", "Hey, so there's another debate flaring up about gun laws. I honestly can't believe people are still arguing over it."),
-                ("Olivia", "Exactly, how many more shootings do we need before we pass real reform?"),
-                # ("Liam", "I feel like it’s just making everything worse."),
-                # ("Shah", "Mmm, it’s definitely leaning in a worrying direction."),
-                ("Mark", f"Totally. It's like logic takes a back seat. Anyway, hey {user_name}, welcome to the group! How's it going? Anything thoughts on the issue?")
-        ]
+        # if st.button("Enter Chat", disabled=not user_name or len(user_name) > 15):
+        #     preset_messages = [
+        #         ("Curtis", "Hey, so there's another debate flaring up about gun laws. I honestly can't believe people are still arguing over it."),
+        #         ("Olivia", "Exactly, how many more shootings do we need before we pass real reform?"),
+        #         ("Mark", f"Totally. It's like logic takes a back seat. Anyway, hey {user_name}, welcome to the group! How's it going? Anything thoughts on the issue?")
+        # ]
+        #     for speaker, line in preset_messages:
+        #         st.session_state.messages.append({
+        #             "role": "assistant",
+        #             "speaker": speaker,
+        #             "content": line,
+        #             "timestamp": datetime.now().strftime("%H:%M")
+        #         })
+        #     st.session_state.user_logo = load_user_logo()
+        #     st.session_state.entered_chat = True
+        #     st.rerun()
+        
+        if st.button("Enter Chat", disabled=not user_name or len(user_name) > 15):
+            # assign liberal or conservative group
+            if "group_ideology" not in st.session_state:
+                st.session_state.group_ideology = random.choice(["liberal", "conservative"])
+
+            # get one topic and its messages
+            topic_key, preset_messages = get_random_topic_and_messages(st.session_state.group_ideology, user_name)
+            st.session_state.selected_topic = topic_key
+
             for speaker, line in preset_messages:
                 st.session_state.messages.append({
                     "role": "assistant",
@@ -93,6 +125,7 @@ def render_chat():
                     "content": line,
                     "timestamp": datetime.now().strftime("%H:%M")
                 })
+
             st.session_state.user_logo = load_user_logo()
             st.session_state.entered_chat = True
             st.rerun()
@@ -128,8 +161,15 @@ def render_chat():
                 "timestamp": timestamp
             })
             st.session_state.user_count += 1
-            st.session_state.trigger_ai_reply = True
-            st.rerun()
+
+            # check if this was the 3rd user message BEFORE any AI replies
+            if st.session_state.user_count >= 3:
+                st.session_state.awaiting_post = True
+                st.rerun()
+            else:
+                st.session_state.trigger_ai_reply = True
+                st.rerun()
+
 
         # AI agent response
         if st.session_state.trigger_ai_reply and st.session_state.user_count <= 6:
@@ -185,6 +225,7 @@ def render_chat():
                     temperature=0.3
                 )
                 reply = response.choices[0].message.content.strip()
+                reply = reply.replace("—", "...")  # replace em dash with ...
                 return reply
 
             recipient = infer_recipient(st.session_state.messages)
@@ -202,8 +243,14 @@ def render_chat():
                 random.shuffle(ai_names)
 
             # choose 1–3 AI responders per round
-            num_responders = random.randint(1, 3)
-            ai_names = random.sample(group_members, k=num_responders)
+            if called_name and called_name in group_members:
+                # if a specific name was mentioned, only that agent replies
+                ai_names = [called_name]
+            else:
+                # otherwise, choose 1–3 random responders
+                num_responders = random.randint(1, 3)
+                ai_names = random.sample(group_members, k=num_responders)
+
 
             # loop
             for i, ai_name in enumerate(ai_names):
@@ -221,13 +268,19 @@ def render_chat():
 
                     response = client.chat.completions.create(
                         model="gpt-4.1",
-                        messages=[{"role": "system", "content": f"{persona[ai_name]} You are in a casual work chat group. "
-                                    "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
-                                    "Avoid long monologue. React to the group conversation naturally, but do not mention "
-                                    f"{st.session_state.nickname} or ask them anything directly. "
-                                    "Do not change the topic unless the participant clearly initiates a new one. "
-                                    "Stay focused and stay liberal on the current topic and continue building on what others have said. "
-                                    "Avoid bringing up unrelated topics like weekend plans or personal activities."}] + context,
+                        messages=[{"role": "system", "content": (
+                            f"{personas[st.session_state.group_ideology][ai_name]} "
+                            f"You are {ai_name} in a casual workplace chat group. "
+                            "Speak only as yourself. Do not speak for the group or refer to others as 'we'. "
+                            "Respond naturally as if in a group chat. Be casual and brief (1–3 sentences). "
+                            "Vary your tone and length like real people. Do not use em dashes (—). "
+                            "Do not ask the participant a direct question or mention their name. "
+                            "Do not change topics unless the participant clearly does. "
+                            "Stay focused on the current topic and build on what others said. "
+                            "Maintain a liberal stance. Acknowledge differing views if needed, but do not shift your position. "
+                            "Avoid personal talk like weekend plans or small talk."
+                        )}] + context,
+
                         temperature=0.7
                     )
                     reply = response.choices[0].message.content.strip()
@@ -276,27 +329,60 @@ def render_chat():
                 time.sleep(random.uniform(2.5, 4.0))
                 user_name = st.session_state.get("nickname", "you")
                 
-                prompt_styles = [
-                    "Pose a friendly question to {name} to invite them into the conversation.",
-                    "Make a casual observation that might get {name} to jump in.",
-                    "Gently nudge {name} to share what they think.",
-                    "Mention {name} naturally in a way that encourages them to respond.",
-                    "Say something that includes {name} and would likely prompt a reply, even if not a question."
+                # --- follow-up prompt styles per agent ---
+                prompt_styles_olivia = [
+                    "Say something empathetic or personal that might encourage {name} to jump in.",
+                    "Bring up a human side of the topic and naturally include {name} in your thought.",
+                    "Use a soft tone and curiosity to invite {name}'s opinion.",
                 ]
-                style = random.choice(prompt_styles)
+
+                prompt_styles_curtis = [
+                    "Drop a sarcastic or witty remark that might get {name}'s attention.",
+                    "Make a pointed pop culture reference and include {name} casually.",
+                    "Say something a bit bold or edgy that {name} might want to respond to.",
+                ]
+
+                prompt_styles_mark = [
+                    "Make a thoughtful or analytical comment and politely invite {name} to weigh in.",
+                    "Point out a logical flaw or subtle contradiction and nudge {name} to comment.",
+                    "Refer to evidence or policy implications and casually ask what {name} thinks.",
+                ]
+                
+                # choose appropriate style based on speaker
+                if followup_speaker == "Olivia":
+                    style = random.choice(prompt_styles_olivia).replace("{name}", st.session_state.nickname)
+                elif followup_speaker == "Curtis":
+                    style = random.choice(prompt_styles_curtis).replace("{name}", st.session_state.nickname)
+                else:
+                    style = random.choice(prompt_styles_mark).replace("{name}", st.session_state.nickname)
+
                 followup_prompt = (
-                    f"{persona[followup_speaker]} You're in a casual work chat group. "
+                    f"{personas[st.session_state.group_ideology][followup_speaker]} "
+                    f"You are {followup_speaker} in a casual work chat group. "
+                    "Speak only as yourself. Do not represent the group or refer to others as 'we'. "
                     "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
-                    "Vary your message length. Some replies should be one short sentence. Some can be longer. Avoid sounding robotic or formulaic."
-                    "Do not change the topic unless the participant clearly initiates a new one. "
-                    "Stay focused and stay liberal on the current topic and continue building on what others have said. "
-                    "You are a liberal. Maintain your liberal stance even if others express centrist views. You can acknowledge, but do not shift your position. Stay polite and constructive, but firm in your ideological beliefs."
-                    "Avoid bringing up unrelated topics like weekend plans or personal activities. "
-                    "Avoid repeating points already said. Don’t restate your own prior comments."
-                    f"Your teammate’s name is Olivia, Curtis, and Mark. Do not invent or substitute any other names. "
-                    f"Use {st.session_state.nickname}'s name in a natural way to nudge them to join the conversation. "
-                    f"{style.replace('{name}', st.session_state.nickname)}"
+                    "Avoid sounding robotic or formulaic. Do not use em dashes (—). "
+                    "Stay on topic unless the participant changes it. "
+                    "Maintain a liberal stance. You can acknowledge differing views politely, but do not shift your position. "
+                    "Do not ask the participant a direct question, but include them in your comment naturally. "
+                    "Do not invent any other names outside this group."
+                    f"{style}"
                 )
+
+                # followup_prompt = (
+                #     f"{persona[followup_speaker]} You're in a casual work chat group. "
+                #     "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
+                #     "Do not use em dashes (—)."
+                #     "Vary your message length. Some replies should be one short sentence. Some can be longer. Avoid sounding robotic or formulaic."
+                #     "Do not change the topic unless the participant clearly initiates a new one. "
+                #     "Stay focused and stay liberal on the current topic and continue building on what others have said. "
+                #     "You are a liberal. Maintain your liberal stance even if others express centrist views. You can acknowledge, but do not shift your position. Stay polite and constructive, but firm in your ideological beliefs."
+                #     "Avoid bringing up unrelated topics like weekend plans or personal activities. "
+                #     "Avoid repeating points already said. Don’t restate your own prior comments."
+                #     f"Your teammate’s name is Olivia, Curtis, and Mark. Do not invent or substitute any other names. "
+                #     f"Use {st.session_state.nickname}'s name in a natural way to nudge them to join the conversation. "
+                #     f"{style.replace('{name}', st.session_state.nickname)}"
+                # )
 
 
                 context = []
@@ -336,12 +422,9 @@ def render_chat():
         # check for conversation end
         user_msg_count = sum(1 for m in st.session_state.messages if m["role"] == "user")
 
-        if (
-            user_msg_count >= 3
-            and not st.session_state.get("final_block_executed", False)
-            and st.session_state.page != "post"
-        ):
-            st.session_state.final_block_executed = True
-            st.session_state.page = "post"
-            st.rerun()
-
+    if st.session_state.awaiting_post:
+        st.markdown("*That is the end of the study.*")
+        time.sleep(1)  # gives user a moment
+        st.session_state.page = "post"
+        st.session_state.awaiting_post = False
+        st.rerun()
