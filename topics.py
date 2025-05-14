@@ -3,65 +3,66 @@ import random
 topics = {
     "guns": {
         "liberal": [
-            ("Curtis", "Hey, so there's another debate flaring up about gun laws. I honestly can't believe people are still arguing over it."),
-            ("Olivia", "Exactly, how many more shootings do we need before we pass real reform?"),
-            ("Mark", "Totally. It's like logic takes a back seat. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "Gun violence is out of control again, and people still act like stricter gun laws are some radical idea."),
+            ("Olivia", "It breaks my heart every time there’s another shooting. How many families have to suffer before we act?"),
+            ("Mark", "The data is clear, countries with stricter regulations have fewer gun deaths. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ],
         "conservative": [
-            ("Curtis", "Honestly, more responsible gun ownership could save lives. It’s not about banning everything."),
-            ("Olivia", "Right, and people have a right to feel safe. You can’t always count on police to be there."),
-            ("Mark", "Exactly — legal gun ownership is a constitutional right. Let’s not lose sight of that. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "Here we go again...they want more gun restrictions as if that’s the magic fix."),
+            ("Olivia", "People deserve to feel safe, but banning guns won’t stop crime. Responsible ownership matters."),
+            ("Mark", "Gun rights are constitutionally protected for a reason. Let’s not pretend more laws equal more safety. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ]
     },
     "immigration": {
         "liberal": [
-            ("Curtis", "Saw someone say immigration causes terrorism again. That tired trope just won’t die."),
-            ("Olivia", "Yeah, it’s heartbreaking how fear gets used to justify excluding people in need."),
-            ("Mark", "I’d love to know what data they're using. Historically, immigration doesn't correlate with terrorism spikes. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "So now immigration's getting blamed for terrorism again? That’s lazy fear-mongering."),
+            ("Olivia", "So many people come here looking for safety and opportunity. We can’t lose our compassion."),
+            ("Mark", "Research shows no strong link between immigration and terrorism. We need smart, humane policy. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ],
         "conservative": [
-            ("Curtis", "There’s a real concern here. Open borders just aren’t realistic when security is on the line."),
-            ("Olivia", "Exactly. No one's saying all immigrants are bad, but you can’t ignore the risk of bad actors."),
-            ("Mark", "It's about balance. Immigration needs rules and vetting, especially in today’s world. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "Open borders sound great until you think about actual security. It’s not that simple."),
+            ("Olivia", "I support immigration, just with proper checks. It’s about finding the balance."),
+            ("Mark", "Strong borders and fair processes can coexist. But ignoring risks is reckless. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ]
     },
     "abortion": {
         "liberal": [
-            ("Curtis", "Another state is trying to ban abortion again. It's like we’re going backwards."),
-            ("Olivia", "It’s terrifying. Imagine being forced to carry a pregnancy you didn’t choose."),
-            ("Mark", "It’s a tough issue, but stripping choice away never leads to good policy. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "Another abortion ban just passed.. are we seriously still doing this?"),
+            ("Olivia", "Imagine being forced to carry a pregnancy you didn’t choose. That’s not freedom."),
+            ("Mark", "Removing access doesn’t reduce abortions, it just makes them more dangerous. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ],
         "conservative": [
-            ("Curtis", "Every life matters...even unborn ones. That’s the core of it for me."),
-            ("Olivia", "And there are options. Adoption, support networks… we can help without ending life."),
-            ("Mark", "Policy should reflect morality. We shouldn’t make convenience outweigh life. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "I know people don’t like to hear it, but protecting unborn life matters."),
+            ("Olivia", "It’s not about control...it’s about care. We can support women and protect life."),
+            ("Mark", "We need a moral foundation for our laws. Convenience shouldn’t outweigh the value of life. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ]
     },
     "vaccines": {
         "liberal": [
-            ("Curtis", "Some folks are mad that the government requires kids to get vaccinated. Seriously?"),
-            ("Olivia", "I get some hesitation, but it’s about protecting the whole community."),
-            ("Mark", "The science is clear...mandated childhood vaccines save lives and prevent outbreaks. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "The backlash over mandatory childhood vaccines is wild. It’s basic public health."),
+            ("Olivia", "I get why some parents are nervous, but vaccines protect everyone — especially the vulnerable."),
+            ("Mark", "Vaccine mandates have reduced preventable diseases. The science is solid. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ],
         "conservative": [
-            ("Curtis", "I just think it’s overreach to force this stuff on parents. Give people the choice."),
-            ("Olivia", "Right. Parents should decide what goes in their kid’s body, not the government."),
-            ("Mark", "Mandates erode trust. We need transparency and personal responsibility, not top-down control. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "So the government’s pushing mandatory vaccines for kids again. That kind of top-down control never sits right with me."),
+            ("Olivia", "Parents should have the final say, not some distant agency. It’s their kids, their call."),
+            ("Mark", "Mandates undermine trust. We need informed consent, not forced compliance. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ]
     },
     "gender": {
         "liberal": [
-            ("Curtis", "People are freaking out about kids learning about gender identity. It’s basic human respect."),
-            ("Olivia", "Exactly! It’s not about politics, it’s about helping kids understand themselves and others."),
-            ("Mark", "Honestly, most of it is just fear-mongering. Schools aren’t turning kids into anything they’re teaching empathy. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "Now people are mad about kids learning what gender identity even is? Seriously?"),
+            ("Olivia", "Understanding gender diversity helps kids navigate the world with empathy. It’s not political, it’s human."),
+            ("Mark", "Education isn’t indoctrination...it’s about expanding awareness. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ],
         "conservative": [
-            ("Curtis", "Teaching this to young kids? I don’t think they’re ready for that conversation."),
-            ("Olivia", "It’s one thing to be inclusive, but it feels like schools are overstepping."),
-            ("Mark", "Parents should decide when and how kids learn about sensitive topics like gender. Anyway, welcome to the group, {{user_name}}. What are your thoughts?")
+            ("Curtis", "They're teaching gender identity in primary school now? That's too much too soon."),
+            ("Olivia", "Inclusivity matters, but so does age-appropriate content. Kids need time to grow into these concepts."),
+            ("Mark", "This isn’t about hate...it’s about when and how sensitive topics are introduced. Anyway, welcome to the group, {{user_name}}. What are your thoughts on this?")
         ]
     }
 }
+
 
 def get_random_topic_and_messages(ideology, user_name):
     topic_key = random.choice(list(topics.keys()))
