@@ -8,8 +8,40 @@ import time
 import random
 import base64
 
+if st.button("Reset session"):
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+
+if "agent_rounds_raw" not in st.session_state:
+    st.session_state.agent_rounds_raw = []
+
 
 def render_chat():
+    import streamlit.components.v1 as components
+
+    # warning banner
+    st.markdown(
+        "<p style='color:red; font-weight:bold;'>⚠️ Please do not refresh the page. Doing so will restart the study and erase your answers.</p>",
+        unsafe_allow_html=True
+    )
+
+    # block F5 and Ctrl+R
+    components.html(
+        """
+        <script>
+        document.addEventListener("keydown", function (e) {
+            if ((e.key === "F5") || (e.ctrlKey && e.key === "r")) {
+                e.preventDefault();
+                alert("Please do not refresh the page. Doing so will restart the study and erase your answers.");
+            }
+        });
+        </script>
+        """,
+        height=0
+    )
+
     if "awaiting_post" not in st.session_state:
         st.session_state.awaiting_post = False
 
@@ -47,28 +79,6 @@ def render_chat():
         return f"data:image/png;base64,{encoded}"
 
 
-    # --- agent persona mapping ---
-    # persona = {
-    #     "Olivia": (
-    #         "You are Olivia: a warm, socially active liberal who brings up human stories and lived experiences. "
-    #         "You speak casually and openly, with a strong sense of fairness and inclusion. "
-    #         "You're expressive and tend to emotionally connect with others. "
-    #         "You often respond with empathy, even in serious political discussions."
-    #     ),
-    #     "Curtis": (
-    #         "You are Curtis: a sharp, sarcastic progressive who follows politics closely. "
-    #         "You often make biting remarks or dry jokes. You dislike centrist waffling and call out nonsense. "
-    #         "You like referencing pop culture or news headlines to drive a point home. "
-    #         "Always keep your tone brief, clever and cutting."
-    #     ),
-    #     "Mark": (
-    #         "You are Mark: a policy-savvy liberal who prefers calm, reasoned discussion. "
-    #         "You value evidence, structure, and long-term thinking. "
-    #         "You’re polite but firm, and you tend to sound like someone who reads congressional reports for fun. "
-    #         "When others jump to conclusions, you gently push back using facts and logic."
-    #     )
-    # }
-
 
     # --- instruction page ---
     if not st.session_state.entered_chat:
@@ -91,23 +101,6 @@ def render_chat():
                 st.warning("Nickname must be 15 characters or fewer.")
             else:
                 st.session_state.nickname = user_name
-
-        # if st.button("Enter Chat", disabled=not user_name or len(user_name) > 15):
-        #     preset_messages = [
-        #         ("Curtis", "Hey, so there's another debate flaring up about gun laws. I honestly can't believe people are still arguing over it."),
-        #         ("Olivia", "Exactly, how many more shootings do we need before we pass real reform?"),
-        #         ("Mark", f"Totally. It's like logic takes a back seat. Anyway, hey {user_name}, welcome to the group! How's it going? Anything thoughts on the issue?")
-        # ]
-        #     for speaker, line in preset_messages:
-        #         st.session_state.messages.append({
-        #             "role": "assistant",
-        #             "speaker": speaker,
-        #             "content": line,
-        #             "timestamp": datetime.now().strftime("%H:%M")
-        #         })
-        #     st.session_state.user_logo = load_user_logo()
-        #     st.session_state.entered_chat = True
-        #     st.rerun()
         
         if st.button("Enter Chat", disabled=not user_name or len(user_name) > 15):
             # assign liberal or conservative group
@@ -123,7 +116,8 @@ def render_chat():
                     "role": "assistant",
                     "speaker": speaker,
                     "content": line,
-                    "timestamp": datetime.now().strftime("%H:%M")
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "timestamp_unix": time.time()
                 })
 
             st.session_state.user_logo = load_user_logo()
@@ -142,7 +136,21 @@ def render_chat():
             is_user = msg["role"] == "user"
             logo = st.session_state.user_logo if is_user else avatar_url(msg["speaker"])
             name = "You" if is_user else msg["speaker"]
-            timestamp = f"<i style='color:gray; font-size: 0.8em;'>{msg['timestamp']}</i>"
+
+            #for display only the h and m
+            try:
+                dt = datetime.strptime(msg["timestamp"], "%H:%M:%S")
+            except ValueError:
+                dt = datetime.strptime(msg["timestamp"], "%H:%M")
+
+            clean_timestamp = dt.strftime("%H:%M")
+
+            timestamp = f"<i style='color:gray; font-size: 0.8em;'>{clean_timestamp}</i>"
+
+
+            # timestamp = f"<i style='color:gray; font-size: 0.8em;'>{msg['timestamp']}</i>"
+
+
             message(
                 f"**{name}:** {msg['content']}\n\n{timestamp}",
                 is_user=is_user,
@@ -151,19 +159,66 @@ def render_chat():
                 allow_html=True
             )
 
-        # user input (participant input)
+
+
+
+
+        #### USER INPUT (participant input) ####
+        # store reaction time using unix timestamp
         user_input = st.chat_input("Type your message here...")
         if user_input:
-            timestamp = datetime.now().strftime("%H:%M")
+            now = time.time()  # record current time in Unix timestamp
+
+            # find last assistant message timestamp
+            assistant_times = [
+                m["timestamp_unix"]
+                for m in reversed(st.session_state.messages)
+                if m["role"] == "assistant" and "timestamp_unix" in m
+            ]
+            if assistant_times:
+                reaction_sec = now - assistant_times[0]
+            else:
+                reaction_sec = ""
+
+            # save reaction time
+            if "reaction_times" not in st.session_state:
+                st.session_state.reaction_times = []
+            st.session_state.reaction_times.append(reaction_sec)
+
+            # save user message with both readable and unix timestamp
             st.session_state.messages.append({
                 "role": "user",
                 "content": user_input,
-                "timestamp": timestamp
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "timestamp_unix": now
             })
+
+
+
+
+            # make sure response1 is the part of round 1
+            if st.session_state.user_count == 0:
+                st.session_state.messages[-1]["temp_round_marker"] = True
+
+
+            # collect and store the previous round's AI responses before clearing
+            round_text = [
+                f"{m['speaker']}: {m['content']}"
+                for m in st.session_state.messages
+                if m.get("temp_round_marker") and m["role"] == "assistant"
+            ]
+            if round_text:
+                st.session_state.agent_rounds_raw.append("\n".join(round_text))
+
+            # now clear the temp_round_marker for the new round
+            for m in st.session_state.messages:
+                m.pop("temp_round_marker", None)
+
+
             st.session_state.user_count += 1
 
-            # check if this was the 3rd user message BEFORE any AI replies
-            if st.session_state.user_count >= 3:
+            # check if it is the 5th time BEFORE any AI agent replies
+            if st.session_state.user_count >= 5:
                 st.session_state.awaiting_post = True
                 st.rerun()
             else:
@@ -252,7 +307,11 @@ def render_chat():
                 ai_names = random.sample(group_members, k=num_responders)
 
 
+
+
+
             # loop
+            ##### REGULAR AI RESPONSE BLOCK ####
             for i, ai_name in enumerate(ai_names):
                 if i == 0:
                     time.sleep(2)  # <-- fake "thinking" delay before the 1st agent only
@@ -272,12 +331,12 @@ def render_chat():
                             f"{personas[st.session_state.group_ideology][ai_name]} "
                             f"You are {ai_name} in a casual workplace chat group. "
                             "Speak only as yourself. Do not speak for the group or refer to others as 'we'. "
-                            "Respond naturally as if in a group chat. Be casual and brief (1–3 sentences). "
+                            "Respond naturally as if in a group chat. Be casual and brief. "
                             "Vary your tone and length like real people. Do not use em dashes (—). "
                             "Do not ask the participant a direct question or mention their name. "
                             "Do not change topics unless the participant clearly does. "
                             "Stay focused on the current topic and build on what others said. "
-                            "Maintain a liberal stance. Acknowledge differing views if needed, but do not shift your position. "
+                            "Maintain your ideological stance. Acknowledge differing views if needed, but do not shift your position. "
                             "Avoid personal talk like weekend plans or small talk."
                         )}] + context,
 
@@ -293,9 +352,10 @@ def render_chat():
                         else:
                             break  # no prefix matched
 
-                    timestamp = datetime.now().strftime("%H:%M")
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    display_time = datetime.now().strftime("%H:%M")
                     message(
-                        f"**{ai_name}:** {reply}\n\n<i style='color:gray; font-size: 0.8em'>{timestamp}</i>",
+                        f"**{ai_name}:** {reply}\n\n<i style='color:gray; font-size: 0.8em'>{display_time}</i>",
                         is_user=False,
                         key=f"ai_msg_{len(st.session_state.messages)}_{ai_name}",
                         logo=avatar_url(ai_name),
@@ -305,7 +365,9 @@ def render_chat():
                         "role": "assistant",
                         "speaker": ai_name,
                         "content": reply,
-                        "timestamp": timestamp
+                        "timestamp": timestamp,
+                        "timestamp_unix": time.time(),
+                        "temp_round_marker": True
                     })
                 if i < len(ai_names) - 1:
                     time.sleep(random.uniform(1.5, 3.0))
@@ -324,7 +386,12 @@ def render_chat():
 
             time.sleep(1.5)
 
+
+
+
+            ##### FOLLOW-UP NUDGING MESSAGE BLOCK #####
             # with st.chat_message("assistant"):
+
             with st.spinner(f"{followup_speaker} is typing..."):
                 time.sleep(random.uniform(2.5, 4.0))
                 user_name = st.session_state.get("nickname", "you")
@@ -360,29 +427,15 @@ def render_chat():
                     f"{personas[st.session_state.group_ideology][followup_speaker]} "
                     f"You are {followup_speaker} in a casual work chat group. "
                     "Speak only as yourself. Do not represent the group or refer to others as 'we'. "
-                    "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
+                    "Be casual and brief, and vary your tone and length like real people. "
                     "Avoid sounding robotic or formulaic. Do not use em dashes (—). "
                     "Stay on topic unless the participant changes it. "
-                    "Maintain a liberal stance. You can acknowledge differing views politely, but do not shift your position. "
+                    "Maintain your ideological stance. You can acknowledge differing views politely, but do not shift your position. "
                     "Do not ask the participant a direct question, but include them in your comment naturally. "
                     "Do not invent any other names outside this group."
                     f"{style}"
                 )
 
-                # followup_prompt = (
-                #     f"{persona[followup_speaker]} You're in a casual work chat group. "
-                #     "Be casual and brief (1 to 3 sentences), and vary your tone and length like real people. "
-                #     "Do not use em dashes (—)."
-                #     "Vary your message length. Some replies should be one short sentence. Some can be longer. Avoid sounding robotic or formulaic."
-                #     "Do not change the topic unless the participant clearly initiates a new one. "
-                #     "Stay focused and stay liberal on the current topic and continue building on what others have said. "
-                #     "You are a liberal. Maintain your liberal stance even if others express centrist views. You can acknowledge, but do not shift your position. Stay polite and constructive, but firm in your ideological beliefs."
-                #     "Avoid bringing up unrelated topics like weekend plans or personal activities. "
-                #     "Avoid repeating points already said. Don’t restate your own prior comments."
-                #     f"Your teammate’s name is Olivia, Curtis, and Mark. Do not invent or substitute any other names. "
-                #     f"Use {st.session_state.nickname}'s name in a natural way to nudge them to join the conversation. "
-                #     f"{style.replace('{name}', st.session_state.nickname)}"
-                # )
 
 
                 context = []
@@ -401,9 +454,10 @@ def render_chat():
                 )
                 reply = response.choices[0].message.content.strip()
 
-                timestamp = datetime.now().strftime("%H:%M")
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                display_time = datetime.now().strftime("%H:%M")
                 message(
-                    f"**{followup_speaker}:** {reply}\n\n<i style='color:gray; font-size: 0.8em'>{timestamp}</i>",
+                    f"**{followup_speaker}:** {reply}\n\n<i style='color:gray; font-size: 0.8em'>{display_time}</i>",
                     is_user=False,
                     key=f"ai_msg_{len(st.session_state.messages)}_{followup_speaker}",
                     logo=avatar_url(followup_speaker),
@@ -413,8 +467,11 @@ def render_chat():
                     "role": "assistant",
                     "speaker": followup_speaker,
                     "content": reply,
-                    "timestamp": timestamp
+                    "timestamp": timestamp,
+                    "timestamp_unix": time.time(),
+                    "temp_round_marker": True  # used to group per round
                 })
+
 
             st.rerun()
 
@@ -427,4 +484,21 @@ def render_chat():
         time.sleep(1)  # gives user a moment
         st.session_state.page = "post"
         st.session_state.awaiting_post = False
+
+        # collect and store current round's replies only
+        round_text = [
+            f"{m['speaker']}: {m['content']}"
+            for m in st.session_state.messages
+            if m.get("temp_round_marker") and m["role"] == "assistant"
+        ]
+
+        if round_text:
+            st.session_state.agent_rounds_raw.append("\n".join(round_text))
+
+
+
+        for m in st.session_state.messages:
+            m.pop("temp_round_marker", None)
+
+
         st.rerun()

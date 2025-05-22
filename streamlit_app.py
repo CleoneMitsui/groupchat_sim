@@ -1,6 +1,6 @@
 import streamlit as st
 # from streamlit_gsheets import GSheetsConnection
-import pandas as pd
+# import pandas as pd
 from google.oauth2 import service_account
 import gspread
 from gspread.exceptions import WorksheetNotFound
@@ -39,6 +39,32 @@ def next_page(new_page):
 
 # intro page
 if st.session_state.page == "intro":
+
+    # warning for not to refresh
+    import streamlit.components.v1 as components
+
+    # warning banner
+    st.markdown(
+        "<p style='color:red; font-weight:bold;'>⚠️ Please do not refresh the page. Doing so will restart the study and erase your answers.</p>",
+        unsafe_allow_html=True
+    )
+
+    # js to block F5 and Ctrl+R
+    components.html(
+        """
+        <script>
+        document.addEventListener("keydown", function (e) {
+            if ((e.key === "F5") || (e.ctrlKey && e.key === "r")) {
+                e.preventDefault();
+                alert("Please do not refresh the page. Doing so will restart the study and erase your answers.");
+            }
+        });
+        </script>
+        """,
+        height=0
+    )
+        
+
     st.markdown("<h2>Welcome to the Study</h2>", unsafe_allow_html=True)
     # st.title("Welcome to the Study")
     st.markdown("""
@@ -80,6 +106,29 @@ if st.session_state.page == "intro":
 
 # demographics page
 elif st.session_state.page == "demographics":
+    import streamlit.components.v1 as components
+
+    # warning message
+    st.markdown(
+        "<p style='color:red; font-weight:bold;'>⚠️ Please do not refresh the page. Doing so will restart the study and erase your answers.</p>",
+        unsafe_allow_html=True
+    )
+
+    # block F5 / Ctrl+R
+    components.html(
+        """
+        <script>
+        document.addEventListener("keydown", function (e) {
+            if ((e.key === "F5") || (e.ctrlKey && e.key === "r")) {
+                e.preventDefault();
+                alert("Please do not refresh the page. Doing so will restart the study and erase your answers.");
+            }
+        });
+        </script>
+        """,
+        height=0
+    )
+
     st.title("About You")
     with st.form("demo_form"):
         pid = st.query_params.get("PROLIFIC_PID", ["unknown"])[0]
@@ -128,79 +177,129 @@ elif st.session_state.page == "chat":
     import chatroom
     chatroom.render_chat() 
 
+
+
+
+#### POST PAGE ####
 # post-survey page
 elif st.session_state.page == "post":
+    next_page("final_survey")  # immediately go to final survey
 
-    # value mappings
-    GENDER_MAP = {"Male": 1, "Female": 2, "Other": 3}
-    ETHNICITY_MAP = {"American Indian or Alaska Native": 1,
-                    "Asian or Asian American": 2,
-                    "Black or African American": 3,
-                    "Hispanic or Latino": 4,
-                    "Middle Eastern or North African": 5,
-                    "Native Hawaiian or other Pacific Islander": 6,
-                    "White": 7,
-                    "Other": 8}
-    EDUCATION_MAP = {
-        "Less than high school": 1,
-        "High school graduate": 2,
-        "Some college, no degree": 3,
-        "Associate degree (e.g., AA, AS)": 4,
-        "Bachelor's degree (e.g., BA, BS)": 5,
-        "Master's degree (e.g., MA, MS, MEd)": 6,
-        "Professional degree (e.g., MD, JD)": 7,
-        "Doctorate (e.g., PhD, EdD)": 8
+
+# final survey
+elif st.session_state.page == "final_survey":
+    st.header("Final Question")
+
+    # custom style for larger font in text area and prompt
+    st.markdown("""
+    <style>
+    textarea {
+        font-size: 18px !important;
+        line-height: 1.6 !important;
     }
-    IDEOLOGY_MAP = {"liberal": 1, "conservative": 2}
-    TOPIC_MAP = {
-        "guns": 1, "immigration": 2, "abortion": 3,
-        "vaccines": 4, "gender": 5
+    .big-label {
+        font-size: 18px !important;
+        line-height: 1.6 !important;
+        font-weight: 500;
     }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<p class="big-label">Any thoughts or reflections on the conversation?</p>', unsafe_allow_html=True)
+    comment = st.text_area(
+        label="Any thoughts or reflections on the conversation?",
+        label_visibility="collapsed",  # hides the label but avoids accessibility warning
+        height=200
+    )
 
 
-    try:
-        # create credentials from streamlit secrets
-        credentials = service_account.Credentials.from_service_account_info(
-            st.secrets["connections"]["gsheets"],
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        gc = gspread.authorize(credentials)
-        sheet = gc.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
-        
-        # get worksheet
+    if st.button("Submit"):
+        st.session_state.comment = comment
+
+        # record everything NOW (after comment is available)
+
+        # --- value mappings ---
+        GENDER_MAP = {"Male": 1, "Female": 2, "Other": 3}
+        ETHNICITY_MAP = {
+            "American Indian or Alaska Native": 1, "Asian or Asian American": 2,
+            "Black or African American": 3, "Hispanic or Latino": 4,
+            "Middle Eastern or North African": 5,
+            "Native Hawaiian or other Pacific Islander": 6, "White": 7, "Other": 8
+        }
+        EDUCATION_MAP = {
+            "Less than high school": 1, "High school graduate": 2,
+            "Some college, no degree": 3, "Associate degree (e.g., AA, AS)": 4,
+            "Bachelor's degree (e.g., BA, BS)": 5, "Master's degree (e.g., MA, MS, MEd)": 6,
+            "Professional degree (e.g., MD, JD)": 7, "Doctorate (e.g., PhD, EdD)": 8
+        }
+        IDEOLOGY_MAP = {"liberal": 1, "conservative": 2}
+        TOPIC_MAP = {"guns": 1, "immigration": 2, "abortion": 3, "vaccines": 4, "gender": 5}
+
+        # --- connect and write ---
         try:
-            worksheet = sheet.worksheet("StudyData")
-        except WorksheetNotFound:
-            worksheet = sheet.add_worksheet("StudyData", rows=1000, cols=8)
-            worksheet.append_row([
-                "PROLIFIC_PID", "age", "sex", "ethnicity", "education",
-                "condition", "topic", "response1", "response2", "response3"
-            ])
-        
-        # collect 3 participant inputs
-        user_messages = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
-        response1 = user_messages[0] if len(user_messages) > 0 else ""
-        response2 = user_messages[1] if len(user_messages) > 1 else ""
-        response3 = user_messages[2] if len(user_messages) > 2 else ""
+            credentials = service_account.Credentials.from_service_account_info(
+                st.secrets["connections"]["gsheets"],
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
+            gc = gspread.authorize(credentials)
+            sheet = gc.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
 
-        row = [
-            st.session_state.prolific_pid,
-            st.session_state.demographics["age"],
-            GENDER_MAP[st.session_state.demographics["gender"]],
-            ETHNICITY_MAP[st.session_state.demographics["ethnicity"]],
-            EDUCATION_MAP[st.session_state.demographics["education"]],
-            IDEOLOGY_MAP[st.session_state.group_ideology],
-            TOPIC_MAP[st.session_state.selected_topic],
-            response1,
-            response2,
-            response3
-        ]
-        worksheet.append_row(row)
+            try:
+                worksheet = sheet.worksheet("StudyData")
+            except WorksheetNotFound:
+                worksheet = sheet.add_worksheet("StudyData", rows=1000, cols=26)
+                worksheet.append_row([
+                    "PROLIFIC_PID", "age", "sex", "ethnicity", "education",
+                    "condition", "topic",
+                    "response1",
+                    "agent_round2", "response2",
+                    "agent_round3", "response3",
+                    "agent_round4", "response4",
+                    "agent_round5", "response5",
+                    "reaction_time1", "reaction_time2", "reaction_time3", "reaction_time4", "reaction_time5",
+                    "comment"
+                ])
 
-    except Exception as e:
-        st.error(f"Error saving data: {str(e)}")
-    
-    next_page("thankyou")
+            # build the row
+            row = [
+                st.session_state.prolific_pid,
+                st.session_state.demographics["age"],
+                GENDER_MAP[st.session_state.demographics["gender"]],
+                ETHNICITY_MAP[st.session_state.demographics["ethnicity"]],
+                EDUCATION_MAP[st.session_state.demographics["education"]],
+                IDEOLOGY_MAP[st.session_state.group_ideology],
+                TOPIC_MAP[st.session_state.selected_topic],
+            ]
+
+            user_responses = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
+            agent_rounds = st.session_state.get("agent_rounds_raw", [])
+            reaction_times = st.session_state.get("reaction_times", [])
+
+            while len(user_responses) < 5:
+                user_responses.append("")
+            while len(agent_rounds) < 4:
+                agent_rounds.append("")
+            while len(reaction_times) < 5:
+                reaction_times.append("")
+
+            row.append(user_responses[0])  # response1 (static round)
+
+            for i in range(4):  # agent_round2–5 + response2–5
+                row.append(agent_rounds[i])
+                row.append(user_responses[i + 1])
+
+            for rt in reaction_times[:5]:
+                row.append(rt)
+
+            row.append(st.session_state.comment)
+
+            worksheet.append_row(row, value_input_option="USER_ENTERED")
+
+        except Exception as e:
+            st.error(f"Google Sheet recording failed: {e}")
+
+        next_page("thankyou")
+
 
 # end page
 elif st.session_state.page == "thankyou":
@@ -214,11 +313,11 @@ elif st.session_state.page == "thankyou":
 
     <br><strong>Debriefing</strong><br>
 
-    Please note that while the group chat interface may have appeared to be a live conversation, <b>all dialogue was generated by artificial intelligence (AI)</b>.
+    Please note that <b>all dialogue was generated by artificial intelligence (AI)</b>.
                  These responses were carefully designed and pre-tested by the research team to ensure they aligned with the intended experimental conditions and 
                 met ethical standards for participant welfare. 
 
-    The political views expressed within the chat do not reflect the personal beliefs of the researchers. They were used solely to serve the purposes of the study.
+    Since the content was generated live during the study, fact-checking was not possible in real time. The political views expressed within the chat do not reflect the personal beliefs of the researchers. They were used solely to serve the purposes of the study.
                 We apologise for any discomfort caused, and we thank you for your understanding and participation. 
                 If you have any questions about this study, please contact us through Prolific.
                 </div><br>
