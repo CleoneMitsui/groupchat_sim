@@ -18,8 +18,13 @@ if "agent_rounds_raw" not in st.session_state:
     st.session_state.agent_rounds_raw = []
 
 
+
 def render_chat():
     import streamlit.components.v1 as components
+
+    # ensure agent_rounds_raw is always initialised, even on smartphone OS
+    if "agent_rounds_raw" not in st.session_state:
+        st.session_state.agent_rounds_raw = []
 
     # warning banner
     st.markdown(
