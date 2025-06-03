@@ -325,10 +325,15 @@ def render_chat():
                 with st.spinner(f"{ai_name} is typing{'.' * random.randint(1, 3)}"):
                     time.sleep(random.uniform(2.5, 4.5))
                     context = [
-                        {"role": "assistant", "content": m["content"]} if m["role"] == "assistant"
-                        else {"role": "user", "content": m["content"]}
-                        for m in st.session_state.messages[-6:]
+                        {"role": "user", "content": f"You: {m['content']}"} if m["role"] == "user"
+                        else {"role": "assistant", "content": f"{m['speaker']}: {m['content']}"}
+                        for m in st.session_state.messages[-10:]  
                     ]
+                    # context = [
+                    #     {"role": "assistant", "content": m["content"]} if m["role"] == "assistant"
+                    #     else {"role": "user", "content": m["content"]}
+                    #     for m in st.session_state.messages[-6:]
+                    # ]
 
                     response = client.chat.completions.create(
                         model="gpt-4.1",
