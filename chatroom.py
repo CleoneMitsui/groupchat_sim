@@ -3,7 +3,6 @@ from openai import OpenAI
 from streamlit_chat import message
 from datetime import datetime
 from topics import get_random_topic_and_messages
-from personas import personas
 import time
 import random
 import base64
@@ -68,15 +67,28 @@ def render_chat():
 
 
     # --- AI agents utilities ---
-    group_members = ["Olivia", "Curtis", "Mark"]
+    # randomly pick 10 personas, assign big 5 styles, and select 3 for chat
+    from personas import generate_personas
+
+    if "group_ideology" in st.session_state and "group_members" not in st.session_state:
+        st.session_state.group_members, st.session_state.persona_dict, st.session_state.trait_dict, st.session_state.avatar_map = generate_personas(st.session_state.group_ideology)
+
+
+
+
+
 
     def avatar_url(name):
-        try:
-            with open(f"images/{name}.png", "rb") as f:
-                encoded = base64.b64encode(f.read()).decode()
-            return f"data:image/png;base64,{encoded}"
-        except FileNotFoundError:
-            return f"https://api.dicebear.com/6.x/icons/svg?seed={name}"
+        filename = st.session_state.avatar_map.get(name)
+        if filename:
+            try:
+                with open(f"images/{filename}", "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode()
+                return f"data:image/png;base64,{encoded}"
+            except FileNotFoundError:
+                pass
+        return f"https://api.dicebear.com/6.x/icons/svg?seed={name}"
+
 
     def load_user_logo():
         with open("images/user.png", "rb") as f:
@@ -111,9 +123,21 @@ def render_chat():
             # assign liberal or conservative group
             if "group_ideology" not in st.session_state:
                 st.session_state.group_ideology = random.choice(["liberal", "conservative"])
+            
+
+            # generate personas
+            if "group_members" not in st.session_state:
+                st.session_state.group_members, st.session_state.persona_dict, st.session_state.trait_dict, st.session_state.avatar_map = generate_personas(st.session_state.group_ideology)
+
 
             # get one topic and its messages
-            topic_key, preset_messages = get_random_topic_and_messages(st.session_state.group_ideology, user_name)
+            # also passes 3 agent names randomly selected
+            topic_key, preset_messages = get_random_topic_and_messages(
+                st.session_state.group_ideology,
+                user_name,
+                st.session_state.group_members
+            )
+
             st.session_state.selected_topic = topic_key
 
             for speaker, line in preset_messages:
@@ -134,7 +158,9 @@ def render_chat():
     # --- main chat UI ---
     else:
         st.subheader("Group Chat Begins 💬")
+        group_members = st.session_state.group_members
         st.markdown(f"👥 **Members:** {', '.join(group_members)} and **You**")
+
 
         # SHOW ALL MESSAGES
         for i, msg in enumerate(st.session_state.messages):
@@ -267,6 +293,7 @@ def render_chat():
 
             # add a helper to let GPT infer who should respond
             def infer_recipient(messages):
+                members = st.session_state.get("group_members", [])
                 context = messages[-6:]  
                 chat = "\n".join(
                     [f"{m.get('speaker', 'You')}: {m['content']}" for m in context]
@@ -274,7 +301,7 @@ def render_chat():
                 system_prompt = (
                     "You are a reasoning agent in a group chat. "
                     "Given the recent messages, infer who should be the next person to respond. "
-                    "Only respond with one of these names: Olivia, Curtis, Mark — or respond with 'all' if it should be general."
+                    "Only respond with one of the current agent names or say 'all' if it should be general."
                 )
                 response = client.chat.completions.create(
                     model="gpt-4.1",
@@ -338,7 +365,7 @@ def render_chat():
                     response = client.chat.completions.create(
                         model="gpt-4.1",
                         messages=[{"role": "system", "content": (
-                            f"{personas[st.session_state.group_ideology][ai_name]} "
+                            f"{st.session_state.persona_dict[ai_name]} "
                             f"You are {ai_name} in a casual workplace chat group. "
                             "Speak only as yourself. Do not speak for the group or refer to others as 'we'. "
                             "Respond naturally as if in a group chat. Be casual and brief. "
@@ -402,39 +429,75 @@ def render_chat():
             ##### FOLLOW-UP NUDGING MESSAGE BLOCK #####
             # with st.chat_message("assistant"):
 
+            # --- follow-up prompt styles per agent ---
+            bigfive_followup_styles = {
+                "HO": [
+                    "Toss out a curious or creative question that includes {name}.",
+                    "Make an offbeat connection and invite {name} into the idea.",
+                    "Bring up a new angle and casually bring {name} into the mix."
+                ],
+                "LO": [
+                    "Stick to something practical and casually tag {name} for thoughts.",
+                    "Mention a familiar example and include {name} naturally.",
+                    "Say something grounded and ask what {name} would think."
+                ],
+                "HC": [
+                    "Summarise the key point and politely invite {name} to add.",
+                    "Point out a next step and see if {name} agrees.",
+                    "Reorganise the thread and mention {name} to chime in."
+                ],
+                "LC": [
+                    "Drop a casual, slightly messy comment that jokingly pulls in {name}.",
+                    "Admit to being a bit off topic and pull {name} in with humour.",
+                    "Say something fun or unstructured, and tag {name} lightly."
+                ],
+                "HE": [
+                    "Say something fun or expressive and include {name} brightly.",
+                    "Throw out a cheerful message and draw {name} into it.",
+                    "Add an emoji-filled line and hope {name} joins in."
+                ],
+                "LE": [
+                    "Say something very short and direct that includes {name}.",
+                    "Briefly mention {name} in a cool, understated way.",
+                    "Drop a quiet observation that invites {name} subtly."
+                ],
+                "HA": [
+                    "Say something warm or supportive to include {name}.",
+                    "Gently pull {name} into the conversation with encouragement.",
+                    "Mention {name} in a caring or harmonious way."
+                ],
+                "LA": [
+                    "Make a blunt or sarcastic remark and pull {name} into it.",
+                    "Challenge something briefly and see if {name} agrees.",
+                    "Toss in a critical thought and invite {name} to weigh in."
+                ],
+                "HN": [
+                    "Worry about how you sounded and check if {name} agrees.",
+                    "Admit uncertainty and ask what {name} thinks.",
+                    "Express concern and mention {name} gently."
+                ],
+                "LN": [
+                    "Say something steady and calm, with a subtle tag to {name}.",
+                    "Respond with composure and invite {name} thoughtfully.",
+                    "Say something reassuring that includes {name} naturally."
+                ]
+            }
+
+
             with st.spinner(f"{followup_speaker} is typing..."):
                 time.sleep(random.uniform(2.5, 4.0))
                 user_name = st.session_state.get("nickname", "you")
                 
-                # --- follow-up prompt styles per agent ---
-                prompt_styles_olivia = [
-                    "Say something empathetic or personal that might encourage {name} to jump in.",
-                    "Bring up a human side of the topic and naturally include {name} in your thought.",
-                    "Use a soft tone and curiosity to invite {name}'s opinion.",
-                ]
-
-                prompt_styles_curtis = [
-                    "Drop a sarcastic or witty remark that might get {name}'s attention.",
-                    "Make a pointed pop culture reference and include {name} casually.",
-                    "Say something a bit bold or edgy that {name} might want to respond to.",
-                ]
-
-                prompt_styles_mark = [
-                    "Make a thoughtful or analytical comment and politely invite {name} to weigh in.",
-                    "Point out a logical flaw or subtle contradiction and nudge {name} to comment.",
-                    "Refer to evidence or policy implications and casually ask what {name} thinks.",
-                ]
+                
+               
                 
                 # choose appropriate style based on speaker
-                if followup_speaker == "Olivia":
-                    style = random.choice(prompt_styles_olivia).replace("{name}", st.session_state.nickname)
-                elif followup_speaker == "Curtis":
-                    style = random.choice(prompt_styles_curtis).replace("{name}", st.session_state.nickname)
-                else:
-                    style = random.choice(prompt_styles_mark).replace("{name}", st.session_state.nickname)
+                trait = st.session_state.trait_dict[followup_speaker]
+                style = random.choice(bigfive_followup_styles[trait]).replace("{name}", st.session_state.nickname)
+
 
                 followup_prompt = (
-                    f"{personas[st.session_state.group_ideology][followup_speaker]} "
+                    f"{st.session_state.persona_dict[followup_speaker]} "
                     f"You are {followup_speaker} in a casual work chat group. "
                     "Speak only as yourself. Do not represent the group or refer to others as 'we'. "
                     "Be casual and brief, and vary your tone and length like real people. "
