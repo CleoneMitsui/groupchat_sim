@@ -45,7 +45,7 @@ if st.session_state.page == "intro":
 
     # warning banner
     st.markdown(
-        "<p style='color:red; font-weight:bold;'>⚠️ Please do not refresh the page. Doing so will restart the study and erase your answers.</p>",
+        "<p style='color:red; font-weight:bold;'>⚠️ Please stay connected. If your internet connection is interrupted, this study will reset and your progress will be lost. Avoid refreshing the page, switching networks, or closing the tab during the study.</p>",
         unsafe_allow_html=True
     )
 
@@ -63,8 +63,9 @@ if st.session_state.page == "intro":
         """,
         height=0
     )
-        
 
+
+     
     st.markdown("<h2>Welcome to the Study</h2>", unsafe_allow_html=True)
     # st.title("Welcome to the Study")
     st.markdown("""
@@ -91,7 +92,7 @@ if st.session_state.page == "intro":
     **Participation and Withdrawal:** Participation in this study is not obligatory. Participants have the right to withdraw from the study at any point. Should you decide to discontinue the participation, you may do so by closing the browser. Data that is partially completed will be temporarily saved online but will be promptly discarded and not be subjected to analysis.
 
     **Rights of Research Participants:** This project has been reviewed by the XXX Research Ethics Board for research involving human participants.
-
+           
     If you choose to continue to the study, the experimenter will assume that you consent to participate in this research.
 
     Note: Please note that you can print a copy of this consent form for your records.
@@ -235,6 +236,16 @@ elif st.session_state.page == "final_survey":
         IDEOLOGY_MAP = {"liberal": 1, "conservative": 2}
         TOPIC_MAP = {"guns": 1, "immigration": 2, "abortion": 3, "vaccines": 4, "gender": 5}
 
+        # extract big5 and avatar image info for recording
+        agent_names = st.session_state.group_members
+        trait_dict = st.session_state.trait_dict
+        avatar_map = st.session_state.avatar_map
+
+        agent_big5 = ", ".join([trait_dict[name] for name in agent_names])
+        agent_avatar = ", ".join([avatar_map[name].split(".")[0][-2:] for name in agent_names])
+
+
+
         # --- connect and write ---
         try:
             credentials = service_account.Credentials.from_service_account_info(
@@ -250,6 +261,7 @@ elif st.session_state.page == "final_survey":
                 worksheet = sheet.add_worksheet("StudyData", rows=1000, cols=26)
                 worksheet.append_row([
                     "PROLIFIC_PID", "age", "sex", "ethnicity", "education",
+                    "agent_big5", "agent_avatar",
                     "condition", "topic",
                     "response1",
                     "agent_round2", "response2",
@@ -260,6 +272,7 @@ elif st.session_state.page == "final_survey":
                     "comment"
                 ])
 
+
             # build the row
             row = [
                 st.session_state.prolific_pid,
@@ -267,6 +280,8 @@ elif st.session_state.page == "final_survey":
                 GENDER_MAP[st.session_state.demographics["gender"]],
                 ETHNICITY_MAP[st.session_state.demographics["ethnicity"]],
                 EDUCATION_MAP[st.session_state.demographics["education"]],
+                agent_big5,
+                agent_avatar,
                 IDEOLOGY_MAP[st.session_state.group_ideology],
                 TOPIC_MAP[st.session_state.selected_topic],
             ]

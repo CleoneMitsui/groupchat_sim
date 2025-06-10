@@ -71,7 +71,7 @@ def render_chat():
     from personas import generate_personas
 
     if "group_ideology" in st.session_state and "group_members" not in st.session_state:
-        st.session_state.group_members, st.session_state.persona_dict, st.session_state.trait_dict, st.session_state.avatar_map = generate_personas(st.session_state.group_ideology)
+        st.session_state.group_members, st.session_state.persona_dict, st.session_state.trait_dict, st.session_state.avatar_map = generate_personas(st.session_state.group_ideology, nickname=st.session_state.nickname)
 
 
 

@@ -39,7 +39,7 @@ def get_ideological_values(ideology):
         ])
 
 
-def generate_personas(ideology):
+def generate_personas(ideology, nickname=None):
     # sample 5 male and 5 female names
     selected_males = random.sample(male_names, 5)
     selected_females = random.sample(female_names, 5)
@@ -75,7 +75,11 @@ def generate_personas(ideology):
     trait_dict = {name: trait_key for name, (trait_key, _) in zip(selected_names, selected_traits)}
 
     # randomly pick 3 for the current group
-    selected_group = random.sample(selected_names, 3)
+    # exclude nickname from the group of 3 agents in the room
+    available_names = [name for name in selected_names if name.lower() != (nickname or "").lower()]
+    selected_group = random.sample(available_names, 3)
+
+
 
     return selected_group, persona_dict, trait_dict, avatar_map
 
