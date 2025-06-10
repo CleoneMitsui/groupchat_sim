@@ -7,11 +7,6 @@ import time
 import random
 import base64
 
-if st.button("Reset session"):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
-
 
 if "agent_rounds_raw" not in st.session_state:
     st.session_state.agent_rounds_raw = []
