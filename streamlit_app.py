@@ -12,16 +12,37 @@ from gspread.exceptions import WorksheetNotFound
 # set page config
 st.set_page_config(page_title="Chatroom Study", page_icon="💬")
 
-# read URL query parameters (PROLIFIC_PID, STUDY_ID, SESSION_ID)
+# --- QUERY PARAM RETRIEVAL ---
 params = st.query_params
-st.session_state.prolific_pid = params.get("PROLIFIC_PID", ["unknown"])[0]
-st.session_state.study_id = params.get("STUDY_ID", ["unknown"])[0]
-st.session_state.session_id = params.get("SESSION_ID", ["unknown"])[0]
+prolific_pid = params.get("PROLIFIC_PID", ["testuser"])[0]
+st.session_state.prolific_pid = prolific_pid
 
-# for debugging display
-# st.write("Captured PID:", st.session_state.prolific_pid)
-# st.write("Captured STUDY_ID:", st.session_state.study_id)
-# st.write("Captured SESSION_ID:", st.session_state.session_id)
+# for debugging display 
+# st.write(f"PROLIFIC_PID: {st.session_state.prolific_pid}")
+
+# --- GOOGLE SHEET WRITE TEST (button) ---
+# if st.button("Send to Google Sheet"):
+#     try:
+#         credentials = service_account.Credentials.from_service_account_info(
+#             st.secrets["connections"]["gsheets"],
+#             scopes=["https://www.googleapis.com/auth/spreadsheets"]
+#         )
+#         gc = gspread.authorize(credentials)
+#         sheet = gc.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
+
+#         try:
+#             worksheet = sheet.worksheet("DebugProlificIDs")
+#         except gspread.exceptions.WorksheetNotFound:
+#             worksheet = sheet.add_worksheet("DebugProlificIDs", rows=100, cols=10)
+#             worksheet.append_row(["PROLIFIC_PID"])
+#         worksheet.append_row([
+#             prolific_pid
+#         ], value_input_option="USER_ENTERED")
+#         st.success(f"Recorded: {prolific_pid}")
+#     except Exception as e:
+#         st.error(f"Error saving to Google Sheet: {e}")
+
+# st.info("adding ?PROLIFIC_PID=ABCD1234 to the end of the URL.")
 
 
 
@@ -71,7 +92,7 @@ if st.session_state.page == "intro":
     st.markdown("""
      <div style='font-size:18px; line-height:1.6'>
                 
-    You are being invited to participate in a research study conducted by [anonymised for the app-building period]. 
+    You are being invited to participate in a research study conducted by Dr. Yuta Kawamura (Osaka Metropolitan University, Osaka, Japan). 
                 If you have any questions or concerns about this study, feel free to contact the researchers via Prolific system.  
 
     **Purpose of the Study:** This study explores how people interact in casual group conversations. 
