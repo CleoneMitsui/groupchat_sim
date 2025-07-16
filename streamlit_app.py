@@ -14,7 +14,7 @@ st.set_page_config(page_title="Chatroom Study", page_icon="💬")
 
 # --- QUERY PARAM RETRIEVAL ---
 params = st.query_params
-prolific_pid = params.get("PROLIFIC_PID", ["testuser"])[0]
+prolific_pid = params.get("PROLIFIC_PID", ["testuser"])
 st.session_state.prolific_pid = prolific_pid
 
 # for debugging display 
@@ -153,7 +153,7 @@ elif st.session_state.page == "demographics":
 
     st.title("About You")
     with st.form("demo_form"):
-        pid = st.query_params.get("PROLIFIC_PID", ["unknown"])[0]
+        pid = st.query_params.get("PROLIFIC_PID", ["unknown"])
         
         age_options = ["Choose an option"] + list(range(18, 80))
         gender_options = ["Choose an option", "Male", "Female", "Other"]
