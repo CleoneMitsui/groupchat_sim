@@ -361,7 +361,7 @@ elif st.session_state.page == "thankyou":
         unsafe_allow_html=True
     )
 
-    PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete?cc=CJQL982C"
+    PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete?cc=CR5P2568"
     st.markdown(
         f"""
         <style>
