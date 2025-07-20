@@ -119,7 +119,7 @@ if st.session_state.page == "intro":
     
     **Confidentiality:** This study is conducted solely for academic research purposes. Therefore, the data collected from this study will be anonymised to ensure confidentiality, and no analysis will be performed that could lead to identification of individuals. While the raw data may be disclosed upon submission to academic journals, it will not be made public in a manner that could identify individuals. In the case that the data is not made public, the data will be retained by the researchers for up to 30 years before permanently deleted.
 
-    **Data Use and Analysis:** The content of your conversation may be used to help improve our understanding of group communication. Please note that your responses may be reviewed using automated tools and anonymised for analysis. By continuing, you consent to this analysis.
+    **Data Use and Analysis:** The content of your input may be used to help improve our understanding of group communication. Please note that your responses may be reviewed using automated tools and anonymised for analysis. By continuing, you consent to this analysis.
                 
     **Participation and Withdrawal:** Participation in this study is not obligatory. Participants have the right to withdraw from the study at any point. Should you decide to discontinue the participation, you may do so by closing the browser. Data that is partially completed will be temporarily saved online but will be promptly discarded and not be subjected to analysis.
 
