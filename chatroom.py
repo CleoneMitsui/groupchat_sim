@@ -6,6 +6,8 @@ from topics import get_random_topic_and_messages
 import time
 import random
 import base64
+from assign_conditions import get_even_assignment
+
 
 
 if "agent_rounds_raw" not in st.session_state:
@@ -19,6 +21,16 @@ def render_chat():
     # ensure agent_rounds_raw is always initialised, even on smartphone OS
     if "agent_rounds_raw" not in st.session_state:
         st.session_state.agent_rounds_raw = []
+
+    from utils import generate_participant_id
+
+    if "participant_id" not in st.session_state:
+        if "prolific_pid" in st.session_state and st.session_state.prolific_pid != ["testuser"]:
+            st.session_state.participant_id = st.session_state.prolific_pid[0]
+        else:
+            st.session_state.participant_id = f"test_{generate_participant_id()}"
+
+
 
     # warning banner
     st.markdown(
@@ -65,10 +77,18 @@ def render_chat():
     # randomly pick 10 personas, assign big 5 styles, and select 3 for chat
     from personas import generate_personas
 
-    if "group_ideology" in st.session_state and "group_members" not in st.session_state:
-        st.session_state.group_members, st.session_state.persona_dict, st.session_state.trait_dict, st.session_state.avatar_map = generate_personas(st.session_state.group_ideology, nickname=st.session_state.nickname)
+    # if "group_ideology" in st.session_state and "group_members" not in st.session_state:
+    #     st.session_state.group_members, st.session_state.persona_dict, st.session_state.trait_dict, st.session_state.avatar_map = generate_personas(st.session_state.group_ideology, nickname=st.session_state.nickname)
 
+    if "group_ideology" not in st.session_state:
+        nickname = st.session_state.get("nickname", "unknown")
+        secret_dict = st.secrets["connections"]["gsheets"]
 
+        assigned_ideology, assigned_topic = get_even_assignment(
+            st.session_state.participant_id,
+            nickname,
+            secret_dict
+        )
 
 
 
@@ -95,16 +115,20 @@ def render_chat():
     # --- instruction page ---
     if not st.session_state.entered_chat:
         st.subheader("Instructions")
+
         st.markdown("""
-    You are a **new employee** who just joined a new workplace.
-    Some of your colleagues have created a **casual chat group**. It is not a professional channel, but something they created to chat about anything from the weather to social gatherings, exchange ideas, or just everyday stuff.
+        <span style='color:#218838; font-weight:bold; font-size:17px;'>
+        📌 Please imagine yourself as a new employee chatting in a real casual group with your new coworkers. Try to respond naturally, as if you're truly part of this work environment.
+        </span><br><br>
 
-    You've just been added to this group chat.
-    When you enter, you’ll first see the last few messages that have already taken place.
-    Feel free to jump in at any time.
+        Some of your colleagues have created a **casual chat group**. It is not a professional channel, but something they created to chat about anything from the weather to social gatherings, exchange ideas, or just everyday stuff.
 
-    Please enter your name or nickname before joining.
-        """)
+        You've just been added to this group chat.
+        When you enter, you’ll first see the last few messages that have already taken place.
+        Feel free to jump in at any time.
+
+        Please enter your name or nickname before joining.
+        """, unsafe_allow_html=True)
 
         user_name = st.text_input("Enter your name or nickname (max 15 characters)", key="nickname_input")
 
@@ -127,11 +151,20 @@ def render_chat():
 
             # get one topic and its messages
             # also passes 3 agent names randomly selected
-            topic_key, preset_messages = get_random_topic_and_messages(
-                st.session_state.group_ideology,
-                user_name,
-                st.session_state.group_members
-            )
+            if "selected_topic" in st.session_state:
+                topic_key, preset_messages = get_random_topic_and_messages(
+                    st.session_state.group_ideology,
+                    user_name,
+                    st.session_state.group_members,
+                    topic=st.session_state.selected_topic
+                )
+            else:
+                topic_key, preset_messages = get_random_topic_and_messages(
+                    st.session_state.group_ideology,
+                    user_name,
+                    st.session_state.group_members
+                )
+
 
             st.session_state.selected_topic = topic_key
 
@@ -341,11 +374,11 @@ def render_chat():
             ##### REGULAR AI RESPONSE BLOCK ####
             for i, ai_name in enumerate(ai_names):
                 if i == 0:
-                    time.sleep(2)  # <-- fake "thinking" delay before the 1st agent only
+                    time.sleep(random.uniform(1.8, 3.2))  # "thinking" delay before the 1st agent only
 
                 # with st.chat_message("assistant"):
                 with st.spinner(f"{ai_name} is typing{'.' * random.randint(1, 3)}"):
-                    time.sleep(random.uniform(2.5, 4.5))
+                    time.sleep(random.uniform(2.5, 4.5)) # "typing" delay
                     context = [
                         {"role": "user", "content": f"You: {m['content']}"} if m["role"] == "user"
                         else {"role": "assistant", "content": f"{m['speaker']}: {m['content']}"}
@@ -361,7 +394,7 @@ def render_chat():
                         model="gpt-4.1",
                         messages=[{"role": "system", "content": (
                             f"{st.session_state.persona_dict[ai_name]} "
-                            f"You are {ai_name} in a casual workplace chat group. "
+                            f"You are {ai_name} , one of several coworkers in a casual group chat at a new workplace.. "
                             "Speak only as yourself. Do not speak for the group or refer to others as 'we'. "
                             "Respond naturally as if in a group chat. Be casual and brief. "
                             "Vary your tone and length like real people. Do not use em dashes (—). "
@@ -370,11 +403,17 @@ def render_chat():
                             "Stay focused on the current topic and build on what others said. "
                             "Maintain your ideological stance. Acknowledge differing views if needed, but do not shift your position. "
                             "Avoid personal talk like weekend plans or small talk."
+                            "Use a natural, informal tone: contractions, everyday expressions, and casual style. "
+                            "Mimic how real people type, including slight disfluencies (like 'um', 'I guess', 'I mean'). "
+                            "Mimic how real people type, such as sometimes using all lowercase."
+                            "Vary the length and tone of your replies, sometimes short, sometimes more expressive. "
+                            "Do not mention you're an AI or use overly formal language. "
                         )}] + context,
 
                         temperature=0.7
                     )
                     reply = response.choices[0].message.content.strip()
+                    reply = reply.replace("—", "...")
                     # recursively remove any group member names at the beginning
                     while True:
                         for other_name in group_members:
@@ -521,6 +560,8 @@ def render_chat():
                     temperature=0.8
                 )
                 reply = response.choices[0].message.content.strip()
+                reply = reply.replace("—", "...")
+
 
                 timestamp = datetime.now().strftime("%H:%M:%S")
                 display_time = datetime.now().strftime("%H:%M")

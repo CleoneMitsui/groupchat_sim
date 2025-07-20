@@ -4,6 +4,8 @@ import streamlit as st
 from google.oauth2 import service_account
 import gspread
 from gspread.exceptions import WorksheetNotFound
+from utils import generate_participant_id
+
 
 # force thank you end page for content checking
 # st.session_state.page = "thankyou"
@@ -15,7 +17,14 @@ st.set_page_config(page_title="Chatroom Study", page_icon="💬")
 # --- QUERY PARAM RETRIEVAL ---
 params = st.query_params
 prolific_pid = params.get("PROLIFIC_PID", ["testuser"])
+# st.session_state.prolific_pid = prolific_pid
+
 st.session_state.prolific_pid = prolific_pid
+if prolific_pid == ["testuser"]:
+    st.session_state.participant_id = f"test_{generate_participant_id()}"
+else:
+    st.session_state.participant_id = prolific_pid[0]
+
 
 # for debugging display 
 # st.write(f"PROLIFIC_PID: {st.session_state.prolific_pid}")
@@ -110,6 +119,8 @@ if st.session_state.page == "intro":
     
     **Confidentiality:** This study is conducted solely for academic research purposes. Therefore, the data collected from this study will be anonymised to ensure confidentiality, and no analysis will be performed that could lead to identification of individuals. While the raw data may be disclosed upon submission to academic journals, it will not be made public in a manner that could identify individuals. In the case that the data is not made public, the data will be retained by the researchers for up to 30 years before permanently deleted.
 
+    **Data Use and Analysis:** The content of your conversation may be used to help improve our understanding of group communication. Please note that your responses may be reviewed using automated tools and anonymised for analysis. By continuing, you consent to this analysis.
+                
     **Participation and Withdrawal:** Participation in this study is not obligatory. Participants have the right to withdraw from the study at any point. Should you decide to discontinue the participation, you may do so by closing the browser. Data that is partially completed will be temporarily saved online but will be promptly discarded and not be subjected to analysis.
 
     **Rights of Research Participants:** This project has been reviewed by the Osaka Metropolitan University Research Ethics Board for research involving human participants.
@@ -202,19 +213,49 @@ elif st.session_state.page == "chat":
 
 
 
-#### POST PAGE ####
-# post-survey page
-elif st.session_state.page == "post":
-    next_page("final_survey")  # immediately go to final survey
 
+#### POST PAGE ####
+elif st.session_state.page == "post":
+    st.markdown("Loading final questions...")
+    import time
+    time.sleep(0.5)
+    next_page("final_survey")
 
 # final survey
 elif st.session_state.page == "final_survey":
-    st.header("Final Question")
 
-    # custom style for larger font in text area and prompt
+    st.header("Final Questions")
+
+    st.markdown('<p class="big-label">How did you feel during the conversation?</p>', unsafe_allow_html=True)
+    st.markdown("Use the sliders below to indicate how you felt during the chat (1 = Not at all, 5 = Very much).")
+
+    emotion_labels = ["It was fun", "It was intense in a good way", "It was thought-provoking"]
+    emotion_responses = {}
+
+    for label in emotion_labels:
+        st.markdown(f"<p class='slider-label'>{label}</p>", unsafe_allow_html=True)
+        emotion_responses[label] = st.slider(
+            label=label,
+            min_value=1,
+            max_value=5,
+            value=3,
+            format="%d",
+            label_visibility="collapsed"
+        )
+
+
+    st.markdown(" ")
+
+    # style
     st.markdown("""
     <style>
+    .slider-label {
+        font-size: 18px !important;
+        line-height: 1.6 !important;
+        font-weight: 500 !important;
+        margin-bottom: -10px !important;
+    }         
+    
     textarea {
         font-size: 18px !important;
         line-height: 1.6 !important;
@@ -230,34 +271,52 @@ elif st.session_state.page == "final_survey":
     st.markdown('<p class="big-label">Any thoughts or reflections on the conversation?</p>', unsafe_allow_html=True)
     comment = st.text_area(
         label="Any thoughts or reflections on the conversation?",
-        label_visibility="collapsed",  # hides the label but avoids accessibility warning
+        label_visibility="collapsed",
         height=200
     )
 
 
+    st.markdown(" ")
+    st.markdown("---")
+    st.markdown('<p class="big-label">Who do you think you were chatting with?</p>', unsafe_allow_html=True)
+    perception = st.radio(
+        label="Who do you think you were chatting with?",  # this fixes the warning
+        options=[
+            "Definitely humans",
+            "Probably humans",
+            "Unsure",
+            "Probably artificial intelligence systems",
+            "Definitely artificial intelligence systems"
+        ],
+        label_visibility="collapsed",  # this hides it visually (for spacing)
+        index=None
+    )
+
+
+
+
+    # --- value mappings ---
+    GENDER_MAP = {"Male": 1, "Female": 2, "Other": 3}
+    ETHNICITY_MAP = {
+        "American Indian or Alaska Native": 1, "Asian or Asian American": 2,
+        "Black or African American": 3, "Hispanic or Latino": 4,
+        "Middle Eastern or North African": 5,
+        "Native Hawaiian or other Pacific Islander": 6, "White": 7, "Other": 8
+    }
+    EDUCATION_MAP = {
+        "Less than high school": 1, "High school graduate": 2,
+        "Some college, no degree": 3, "Associate degree (e.g., AA, AS)": 4,
+        "Bachelor's degree (e.g., BA, BS)": 5, "Master's degree (e.g., MA, MS, MEd)": 6,
+        "Professional degree (e.g., MD, JD)": 7, "Doctorate (e.g., PhD, EdD)": 8
+    }
+    IDEOLOGY_MAP = {"liberal": 1, "conservative": 2}
+    TOPIC_MAP = {"guns": 1, "immigration": 2, "abortion": 3, "vaccines": 4, "gender": 5}
+
     if st.button("Submit"):
         st.session_state.comment = comment
+        st.session_state.perception = perception
+        st.session_state.emotion_responses = emotion_responses
 
-        # record everything NOW (after comment is available)
-
-        # --- value mappings ---
-        GENDER_MAP = {"Male": 1, "Female": 2, "Other": 3}
-        ETHNICITY_MAP = {
-            "American Indian or Alaska Native": 1, "Asian or Asian American": 2,
-            "Black or African American": 3, "Hispanic or Latino": 4,
-            "Middle Eastern or North African": 5,
-            "Native Hawaiian or other Pacific Islander": 6, "White": 7, "Other": 8
-        }
-        EDUCATION_MAP = {
-            "Less than high school": 1, "High school graduate": 2,
-            "Some college, no degree": 3, "Associate degree (e.g., AA, AS)": 4,
-            "Bachelor's degree (e.g., BA, BS)": 5, "Master's degree (e.g., MA, MS, MEd)": 6,
-            "Professional degree (e.g., MD, JD)": 7, "Doctorate (e.g., PhD, EdD)": 8
-        }
-        IDEOLOGY_MAP = {"liberal": 1, "conservative": 2}
-        TOPIC_MAP = {"guns": 1, "immigration": 2, "abortion": 3, "vaccines": 4, "gender": 5}
-
-        # extract big5 and avatar image info for recording
         agent_names = st.session_state.group_members
         trait_dict = st.session_state.trait_dict
         avatar_map = st.session_state.avatar_map
@@ -265,9 +324,6 @@ elif st.session_state.page == "final_survey":
         agent_big5 = ", ".join([trait_dict[name] for name in agent_names])
         agent_avatar = ", ".join([avatar_map[name].split(".")[0][-2:] for name in agent_names])
 
-
-
-        # --- connect and write ---
         try:
             credentials = service_account.Credentials.from_service_account_info(
                 st.secrets["connections"]["gsheets"],
@@ -290,8 +346,18 @@ elif st.session_state.page == "final_survey":
                     "agent_round4", "response4",
                     "agent_round5", "response5",
                     "reaction_time1", "reaction_time2", "reaction_time3", "reaction_time4", "reaction_time5",
-                    "comment"
+                    "comment",
+                    "fun", "intense", "thought-provoking", 
+                    "perceived_identity"
                 ])
+            if any(v is None for v in emotion_responses.values()):
+                st.warning("Please complete all emotional response sliders.")
+                st.stop()
+
+            # validation: perception must be selected
+            if perception is None:
+                st.warning("Please select who you think you were chatting with.")
+                st.stop()
 
 
             # build the row
@@ -317,18 +383,19 @@ elif st.session_state.page == "final_survey":
                 agent_rounds.append("")
             while len(reaction_times) < 5:
                 reaction_times.append("")
-
             row.append(user_responses[0])  # response1 (static round)
-
             for i in range(4):  # agent_round2–5 + response2–5
                 row.append(agent_rounds[i])
                 row.append(user_responses[i + 1])
-
             for rt in reaction_times[:5]:
                 row.append(rt)
-
             row.append(st.session_state.comment)
 
+            # extend with emotional ratings
+            for emotion in emotion_labels:
+                row.append(st.session_state.emotion_responses.get(emotion, ""))
+            # extend with perceived identity
+            row.append(st.session_state.perception)
             worksheet.append_row(row, value_input_option="USER_ENTERED")
 
         except Exception as e:
