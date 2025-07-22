@@ -17,20 +17,39 @@ def get_even_assignment(participant_id, nickname, secret_dict):
     else:
         df = pd.DataFrame(data[1:], columns=data[0])
 
-    # duplicate protection
+    # --- duplicate protection ---
     existing = df[df["participant_id"] == participant_id]
     if not existing.empty:
         row = existing.iloc[0]
         return row["assigned_ideology"], row["assigned_topic"]
 
-    # assign new
-    ideology_counts = df["assigned_ideology"].value_counts().to_dict()
-    topic_counts = df["assigned_topic"].value_counts().to_dict()
+    # --- setup ---
     all_topics = ["guns", "immigration", "abortion", "vaccines", "gender"]
 
-    ideology = "liberal" if ideology_counts.get("liberal", 0) <= ideology_counts.get("conservative", 0) else "conservative"
-    topic = min(all_topics, key=lambda t: topic_counts.get(t, 0))
+    # count how many times each ideology has been assigned
+    ideology_counts = df["assigned_ideology"].value_counts().to_dict()
 
+    # count how many times each topic has been assigned within each ideology
+    if not df.empty:
+        stratified_counts = df.groupby(["assigned_ideology", "assigned_topic"]).size().unstack(fill_value=0)
+    else:
+        stratified_counts = pd.DataFrame(0, index=["liberal", "conservative"], columns=all_topics)
+
+    # ensure all ideologies and topics are present in the table
+    for ideol in ["liberal", "conservative"]:
+        if ideol not in stratified_counts.index:
+            stratified_counts.loc[ideol] = 0
+    stratified_counts = stratified_counts.fillna(0)
+
+    # --- assign ideology with fewer total assigned so far ---
+    liberal_count = ideology_counts.get("liberal", 0)
+    conservative_count = ideology_counts.get("conservative", 0)
+    ideology = "liberal" if liberal_count <= conservative_count else "conservative"
+
+    # --- assign topic with lowest count for the selected ideology ---
+    topic = stratified_counts.loc[ideology].idxmin()
+
+    # --- write to sheet ---
     worksheet.append_row([
         participant_id,
         nickname,
@@ -39,4 +58,3 @@ def get_even_assignment(participant_id, nickname, secret_dict):
     ], value_input_option="USER_ENTERED")
 
     return ideology, topic
-
