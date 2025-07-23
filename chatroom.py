@@ -395,7 +395,6 @@ def render_chat():
                             "Avoid personal talk like weekend plans or small talk."
                             "Use a natural, informal tone: contractions, everyday expressions, and casual style. "
                             "Mimic how real people type, including slight disfluencies (like 'um', 'I guess', 'I mean'). "
-                            "Mimic how real people type, such as occassionally using all lowercase."
                             "Vary the length and tone of your replies, sometimes short, sometimes more expressive. "
                             "Do not mention you're an AI or use overly formal language. "
                         )}] + context,
@@ -456,7 +455,7 @@ def render_chat():
             # --- follow-up prompt styles per agent ---
             bigfive_followup_styles = {
                 "HO": [
-                    "Toss out a curious or creative question.",
+                    "Toss out a curious or creative question, and use all lowercase.",
                     "Make an offbeat connection and invite others into the idea.",
                     "Bring up a new angle and casually bring {name} into the mix."
                 ],
@@ -473,7 +472,7 @@ def render_chat():
                 "LC": [
                     "Drop a casual, slightly messy comment that jokingly pulls in {name}.",
                     "Admit to being a bit off topic and pull others in with humour.",
-                    "Say something fun or unstructured."
+                    "Say something fun, unstructured, and use all lowercase."
                 ],
                 "HE": [
                     "Say something fun or expressive.",
@@ -525,6 +524,7 @@ def render_chat():
                     "Speak only as yourself. Do not represent the group or refer to others as 'we'. "
                     "Be casual and brief, and vary your tone and length like real people. "
                     "Avoid sounding robotic or formulaic. Do not use em dashes (—). "
+                    "Mimic how real people type."
                     "Stay on topic unless the participant changes it. "
                     "Maintain your ideological stance. You can acknowledge differing views politely, but do not shift your position. "
                     "Do not invent any other names outside this group."
