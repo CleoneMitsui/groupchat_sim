@@ -110,7 +110,7 @@ if st.session_state.page == "intro":
     **Purpose of the Study:** This study explores how people interact in casual group conversations. 
     
     **Procedures:** If you volunteer to participate in this study, you will complete a brief online interaction. 
-                The process takes approximately 5 minutes to complete.  
+                The process takes approximately 7 minutes to complete.  
     
     **Requirements:** All participants must be Prolific participants, and be at least 18 years of age.
     
@@ -230,8 +230,7 @@ elif st.session_state.page == "final_survey":
     st.header("Final Questions")
 
     st.markdown('<p class="big-label">Please indicate to what extent you have felt this way during the chat experience.</p>', unsafe_allow_html=True)
-
-    emotion_labels = ["Excited", "Interested", "Irritable"]
+    emotion_labels = ["Interested", "Happy", "Excited", "Irritable", "Angry"]
     emotion_options = [
         "1 - Very slightly or not at all",
         "2 - A little",
@@ -248,10 +247,10 @@ elif st.session_state.page == "final_survey":
         font-size: 18px !important;
         line-height: 1.6 !important;
         font-weight: 500;
-        margin-top: 1.2rem;
+        margin-top: 0rem;
     }
-    div[role="radiogroup"] > label {
-        font-size: 16px !important;
+    .radio-label + .radio-label {
+        margin-top: 0.2rem;
     }
 
     textarea {
@@ -263,6 +262,7 @@ elif st.session_state.page == "final_survey":
         font-size: 18px !important;
         line-height: 1.6 !important;
         font-weight: 500;
+        margin-bottom: 0.2rem !important;  
     }
     </style>
     """, unsafe_allow_html=True)
@@ -347,7 +347,7 @@ elif st.session_state.page == "final_survey":
                     "agent_round5", "response5",
                     "reaction_time1", "reaction_time2", "reaction_time3", "reaction_time4", "reaction_time5",
                     "comment",
-                    "excited", "interested", "irritable"
+                    "interested", "happy", "excited", "irritable", "angry"
                 ])
 
             # build the row

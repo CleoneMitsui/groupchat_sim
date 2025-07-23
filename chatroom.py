@@ -81,14 +81,13 @@ def render_chat():
     #     st.session_state.group_members, st.session_state.persona_dict, st.session_state.trait_dict, st.session_state.avatar_map = generate_personas(st.session_state.group_ideology, nickname=st.session_state.nickname)
 
     if "group_ideology" not in st.session_state:
-        nickname = st.session_state.get("nickname", "unknown")
         secret_dict = st.secrets["connections"]["gsheets"]
 
         assigned_ideology, assigned_topic = get_even_assignment(
             st.session_state.participant_id,
-            nickname,
             secret_dict
         )
+
 
 
 
@@ -207,9 +206,6 @@ def render_chat():
             timestamp = f"<i style='color:gray; font-size: 0.8em;'>{clean_timestamp}</i>"
 
 
-            # timestamp = f"<i style='color:gray; font-size: 0.8em;'>{msg['timestamp']}</i>"
-
-
             message(
                 f"**{name}:** {msg['content']}\n\n{timestamp}",
                 is_user=is_user,
@@ -313,12 +309,10 @@ def render_chat():
                 return None
 
 
-
             # get who was called
             called_name = get_called_name(st.session_state.messages, group_members)
 
         
-
             # add a helper to let GPT infer who should respond
             def infer_recipient(messages):
                 members = st.session_state.get("group_members", [])
@@ -384,11 +378,7 @@ def render_chat():
                         else {"role": "assistant", "content": f"{m['speaker']}: {m['content']}"}
                         for m in st.session_state.messages[-10:]  
                     ]
-                    # context = [
-                    #     {"role": "assistant", "content": m["content"]} if m["role"] == "assistant"
-                    #     else {"role": "user", "content": m["content"]}
-                    #     for m in st.session_state.messages[-6:]
-                    # ]
+            
 
                     response = client.chat.completions.create(
                         model="gpt-4.1",
@@ -405,7 +395,7 @@ def render_chat():
                             "Avoid personal talk like weekend plans or small talk."
                             "Use a natural, informal tone: contractions, everyday expressions, and casual style. "
                             "Mimic how real people type, including slight disfluencies (like 'um', 'I guess', 'I mean'). "
-                            "Mimic how real people type, such as sometimes using all lowercase."
+                            "Mimic how real people type, such as occassionally using all lowercase."
                             "Vary the length and tone of your replies, sometimes short, sometimes more expressive. "
                             "Do not mention you're an AI or use overly formal language. "
                         )}] + context,
@@ -466,57 +456,56 @@ def render_chat():
             # --- follow-up prompt styles per agent ---
             bigfive_followup_styles = {
                 "HO": [
-                    "Toss out a curious or creative question that includes {name}.",
-                    "Make an offbeat connection and invite {name} into the idea.",
+                    "Toss out a curious or creative question.",
+                    "Make an offbeat connection and invite others into the idea.",
                     "Bring up a new angle and casually bring {name} into the mix."
                 ],
                 "LO": [
                     "Stick to something practical and casually tag {name} for thoughts.",
-                    "Mention a familiar example and include {name} naturally.",
-                    "Say something grounded and ask what {name} would think."
+                    "Mention a familiar example and include others to chime in naturally.",
+                    "Say something grounded and ask what others would think."
                 ],
                 "HC": [
-                    "Summarise the key point and politely invite {name} to add.",
-                    "Point out a next step and see if {name} agrees.",
+                    "Summarise the key point and politely invite others to add.",
+                    "Point out a next step and see if others agree.",
                     "Reorganise the thread and mention {name} to chime in."
                 ],
                 "LC": [
                     "Drop a casual, slightly messy comment that jokingly pulls in {name}.",
-                    "Admit to being a bit off topic and pull {name} in with humour.",
-                    "Say something fun or unstructured, and tag {name} lightly."
+                    "Admit to being a bit off topic and pull others in with humour.",
+                    "Say something fun or unstructured."
                 ],
                 "HE": [
-                    "Say something fun or expressive and include {name} brightly.",
-                    "Throw out a cheerful message and draw {name} into it.",
+                    "Say something fun or expressive.",
+                    "Throw out a cheerful message and draw others into it.",
                     "Add an emoji-filled line and hope {name} joins in."
                 ],
                 "LE": [
-                    "Say something very short and direct that includes {name}.",
+                    "Say something very short.",
                     "Briefly mention {name} in a cool, understated way.",
-                    "Drop a quiet observation that invites {name} subtly."
+                    "Drop a quiet observation."
                 ],
                 "HA": [
-                    "Say something warm or supportive to include {name}.",
+                    "Say something warm or supportive.",
                     "Gently pull {name} into the conversation with encouragement.",
-                    "Mention {name} in a caring or harmonious way."
+                    "Speak in a caring or harmonious way."
                 ],
                 "LA": [
-                    "Make a blunt or sarcastic remark and pull {name} into it.",
+                    "Make a blunt or sarcastic remark.",
                     "Challenge something briefly and see if {name} agrees.",
-                    "Toss in a critical thought and invite {name} to weigh in."
+                    "Toss in a critical thought and invite others to weigh in."
                 ],
                 "HN": [
                     "Worry about how you sounded and check if {name} agrees.",
-                    "Admit uncertainty and ask what {name} thinks.",
-                    "Express concern and mention {name} gently."
+                    "Admit uncertainty.",
+                    "Express concern gently."
                 ],
                 "LN": [
-                    "Say something steady and calm, with a subtle tag to {name}.",
-                    "Respond with composure and invite {name} thoughtfully.",
+                    "Say something steady and calm.",
+                    "Respond with composure and invite others to chime in thoughtfully.",
                     "Say something reassuring that includes {name} naturally."
                 ]
             }
-
 
             with st.spinner(f"{followup_speaker} is typing..."):
                 time.sleep(random.uniform(2.5, 4.0))
@@ -538,7 +527,6 @@ def render_chat():
                     "Avoid sounding robotic or formulaic. Do not use em dashes (—). "
                     "Stay on topic unless the participant changes it. "
                     "Maintain your ideological stance. You can acknowledge differing views politely, but do not shift your position. "
-                    "Do not ask the participant a direct question, but include them in your comment naturally. "
                     "Do not invent any other names outside this group."
                     f"{style}"
                 )
@@ -581,7 +569,6 @@ def render_chat():
                     "temp_round_marker": True  # used to group per round
                 })
 
-
             st.rerun()
 
 
@@ -604,10 +591,7 @@ def render_chat():
         if round_text:
             st.session_state.agent_rounds_raw.append("\n".join(round_text))
 
-
-
         for m in st.session_state.messages:
             m.pop("temp_round_marker", None)
-
 
         st.rerun()

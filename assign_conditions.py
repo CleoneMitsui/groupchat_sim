@@ -2,7 +2,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
 
-def get_even_assignment(participant_id, nickname, secret_dict):
+def get_even_assignment(participant_id, secret_dict):
     creds = Credentials.from_service_account_info(
         secret_dict,
         scopes=["https://www.googleapis.com/auth/spreadsheets"]
@@ -13,7 +13,7 @@ def get_even_assignment(participant_id, nickname, secret_dict):
 
     data = worksheet.get_all_values()
     if len(data) <= 1:
-        df = pd.DataFrame(columns=["participant_id", "nickname", "assigned_ideology", "assigned_topic"])
+        df = pd.DataFrame(columns=["participant_id", "assigned_ideology", "assigned_topic"])
     else:
         df = pd.DataFrame(data[1:], columns=data[0])
 
@@ -52,7 +52,6 @@ def get_even_assignment(participant_id, nickname, secret_dict):
     # --- write to sheet ---
     worksheet.append_row([
         participant_id,
-        nickname,
         ideology,
         topic
     ], value_input_option="USER_ENTERED")
