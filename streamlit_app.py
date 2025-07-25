@@ -110,7 +110,7 @@ if st.session_state.page == "intro":
     **Purpose of the Study:** This study explores how people interact in casual group conversations. 
     
     **Procedures:** If you volunteer to participate in this study, you will complete a brief online interaction. 
-                The process takes approximately 7 minutes to complete.  
+                The process takes approximately 7~8 minutes to complete.  
     
     **Requirements:** All participants must be Prolific participants, and be at least 18 years of age.
     
@@ -118,7 +118,7 @@ if st.session_state.page == "intro":
 
     **Potential Benefits to Participants and/or to Society:** You will receive no personal benefits for participating (other than compensation – see below). Your participation will contribute to ongoing academic research.
 
-    **Compensation for Participants:** For participating in this study, you will receive a base pay of £0.75.
+    **Compensation for Participants:** For participating in this study, you will receive a base pay of £1.20.
     
     **Confidentiality:** This study is conducted solely for academic research purposes. Therefore, the data collected from this study will be anonymised to ensure confidentiality, and no analysis will be performed that could lead to identification of individuals. While the raw data may be disclosed upon submission to academic journals, it will not be made public in a manner that could identify individuals. In the case that the data is not made public, the data will be retained by the researchers for up to 30 years before permanently deleted.
 
