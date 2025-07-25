@@ -117,7 +117,7 @@ def render_chat():
 
         st.markdown("""
         <span style='color:#218838; font-weight:bold; font-size:17px;'>
-        📌 Please imagine yourself as a new employee chatting in a real casual group with your new coworkers. Try to respond naturally, as if you're truly part of this work environment.
+        📌 Please imagine yourself as a new employee chatting in a real casual group with your new coworkers. Although your conversation partners are Generative AI agents, try to respond naturally as if they are real people in your workplace and you're truly part of this work environment. This will help us better understand communication in realistic settings.
         </span><br><br>
 
         Some of your colleagues have created a **casual chat group**. It is not a professional channel, but something they created to chat about anything from the weather to social gatherings, exchange ideas, or just everyday stuff.
