@@ -25,10 +25,12 @@ def render_chat():
     from utils import generate_participant_id
 
     if "participant_id" not in st.session_state:
-        if "prolific_pid" in st.session_state and st.session_state.prolific_pid != ["testuser"]:
-            st.session_state.participant_id = st.session_state.prolific_pid[0]
-        else:
+        prolific_pid = st.session_state.get("prolific_pid", "testuser")
+        if prolific_pid == "testuser":
             st.session_state.participant_id = f"test_{generate_participant_id()}"
+        else:
+            st.session_state.participant_id = prolific_pid
+
 
 
 
@@ -87,6 +89,8 @@ def render_chat():
             st.session_state.participant_id,
             secret_dict
         )
+        st.session_state.group_ideology = assigned_ideology
+        st.session_state.assigned_topic = assigned_topic
 
 
 
@@ -150,19 +154,26 @@ def render_chat():
 
             # get one topic and its messages
             # also passes 3 agent names randomly selected
-            if "selected_topic" in st.session_state:
-                topic_key, preset_messages = get_random_topic_and_messages(
-                    st.session_state.group_ideology,
-                    user_name,
-                    st.session_state.group_members,
-                    topic=st.session_state.selected_topic
-                )
-            else:
-                topic_key, preset_messages = get_random_topic_and_messages(
-                    st.session_state.group_ideology,
-                    user_name,
-                    st.session_state.group_members
-                )
+            topic_key, preset_messages = get_random_topic_and_messages(
+                st.session_state.group_ideology,
+                user_name,
+                st.session_state.group_members,
+                topic=st.session_state.assigned_topic  # force balanced topic
+            )
+
+            # if "selected_topic" in st.session_state:
+            #     topic_key, preset_messages = get_random_topic_and_messages(
+            #         st.session_state.group_ideology,
+            #         user_name,
+            #         st.session_state.group_members,
+            #         topic=st.session_state.selected_topic
+            #     )
+            # else:
+            #     topic_key, preset_messages = get_random_topic_and_messages(
+            #         st.session_state.group_ideology,
+            #         user_name,
+            #         st.session_state.group_members
+                # )
 
 
             st.session_state.selected_topic = topic_key

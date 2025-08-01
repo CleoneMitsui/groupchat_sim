@@ -30,16 +30,16 @@ def get_even_assignment(participant_id, secret_dict):
     ideology_counts = df["assigned_ideology"].value_counts().to_dict()
 
     # count how many times each topic has been assigned within each ideology
-    if not df.empty:
-        stratified_counts = df.groupby(["assigned_ideology", "assigned_topic"]).size().unstack(fill_value=0)
-    else:
-        stratified_counts = pd.DataFrame(0, index=["liberal", "conservative"], columns=all_topics)
+    # create stratified counts table with all combinations
+    index = ["liberal", "conservative"]
+    columns = all_topics
+    stratified_counts = pd.DataFrame(0, index=index, columns=columns)
 
-    # ensure all ideologies and topics are present in the table
-    for ideol in ["liberal", "conservative"]:
-        if ideol not in stratified_counts.index:
-            stratified_counts.loc[ideol] = 0
-    stratified_counts = stratified_counts.fillna(0)
+    if not df.empty:
+        current_counts = df.groupby(["assigned_ideology", "assigned_topic"]).size()
+        for (ideol, topic), count in current_counts.items():
+            stratified_counts.loc[ideol, topic] = count
+
 
     # --- assign ideology with fewer total assigned so far ---
     liberal_count = ideology_counts.get("liberal", 0)
