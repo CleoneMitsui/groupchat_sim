@@ -7,7 +7,6 @@ import time
 import random
 import base64
 from assign_conditions import get_even_assignment
-LANG = "ja"  # "ja" for Japanese mode
 
 
 
@@ -41,41 +40,26 @@ def render_chat():
         unsafe_allow_html=True
     )
 
+    # block F5 and Ctrl+R
+    components.html(
+        """
+        <script>
+        document.addEventListener("keydown", function (e) {
+            if ((e.key === "F5") || (e.ctrlKey && e.key === "r")) {
+                e.preventDefault();
+                alert("Please do not refresh the page. Doing so will restart the study and erase your answers.");
+            }
+        });
+        </script>
+        """,
+        height=0
+    )
+
     if "awaiting_post" not in st.session_state:
         st.session_state.awaiting_post = False
 
 
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-    #### translate topics.py
-    from functools import lru_cache
-
-    @lru_cache(maxsize=8)
-    def translate_seed_lines(lines_tuple):
-        # lines_tuple is a tuple of strings so it's hashable for caching
-        if LANG != "ja":
-            return list(lines_tuple)
-        prompt = (
-            "Translate the following chat lines into natural, casual Japanese used among coworkers. "
-            "Keep names as-is. Keep the meaning and tone. Return one line per bullet, in order."
-        )
-        content = "\n".join([f"- {x}" for x in lines_tuple])
-        resp = client.chat.completions.create(
-            model="gpt-4.1",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": content}
-            ],
-            temperature=0.2
-        )
-        out = resp.choices[0].message.content.strip().split("\n")
-        # strip leading bullets / whitespace
-        out = [s.lstrip("-• ").strip() for s in out if s.strip()]
-        # if the model returns fewer lines for some reason, fall back to originals
-        if len(out) != len(lines_tuple):
-            return list(lines_tuple)
-        return out
-
 
 
     # --- session initiation ---
@@ -108,6 +92,10 @@ def render_chat():
         st.session_state.group_ideology = assigned_ideology
         st.session_state.assigned_topic = assigned_topic
 
+
+
+
+
     def avatar_url(name):
         filename = st.session_state.avatar_map.get(name)
         if filename:
@@ -129,42 +117,34 @@ def render_chat():
 
     # --- instruction page ---
     if not st.session_state.entered_chat:
-        st.title("Chatgroup Demo (Japanese) 💬")
+        st.subheader("Instructions")
 
         st.markdown("""
-     <div style="font-size:16px; line-height:1.8">
-          <strong>デモ版のご案内：</strong><br> 
-        本アプリケーションはデモ用です。<br><br>
-                    
-        <strong>データとAIの利用について：</strong><br>
-          ここでは、AIエージェントと模擬グループチャットで対話します。あなたが入力するテキストは、生成AIモデルにより
-                    リアルタイムで処理・応答生成されます。本デモで得られるデータについては匿名性が保証され，個⼈が特定できるかたちで解析されることはありません。
-        次のページに進むことで、AIエージェントとの対話およびデータの研究利用に同意したものとみなされます。
-        </div>
-         <br>
-        <span style="color:#218838; font-weight:bold; font-size:17px;">
-          📌 あなたは同僚から招待されて、気軽な雑談グループチャットに参加することになったと想像してください。実際の同僚と話しているつもりで、自然にやり取りしてください。<br><br>
-                    
-        このグループは仕事用の公式チャンネルではなく、雑談や集まりの予定、日常の話題を気軽に交わす場です。
-        入室すると、これまでのやり取りの一部が表示されます。いつでも会話に加わってください。<br><br>
-        </span>
+        <span style='color:#218838; font-weight:bold; font-size:17px;'>
+        📌 Please imagine yourself as a new employee chatting in a real casual group with your new coworkers. Although your conversation partners are Generative AI agents, try to respond naturally as if they are real people in your workplace and you're truly part of this work environment. This will help us better understand communication in realistic settings.
+        </span><br><br>
 
-        参加する前に、ニックネームを入力してください。<br>
-        <span style='font-size:15px; color:gray;'>※このニックネームは記録されず、グループ内での識別のみに使用されます。</span>
+        Some of your colleagues have created a **casual chat group**. It is not a professional channel, but something they created to chat about anything from the weather to social gatherings, exchange ideas, or just everyday stuff.
+
+        You've just been added to this group chat.
+        When you enter, you’ll first see the last few messages that have already taken place.
+        Feel free to jump in at any time.
+
+        Please enter your name or nickname before joining.
         """, unsafe_allow_html=True)
 
-        user_name = st.text_input("ニックネームを入力してください（12文字以内）", key="nickname_input")
+        user_name = st.text_input("Enter your name or nickname (max 15 characters)", key="nickname_input")
 
         if user_name:
-            if len(user_name) > 12:
-                st.warning("ニックネームは12文字以内にしてください。")
+            if len(user_name) > 15:
+                st.warning("Nickname must be 15 characters or fewer.")
             else:
                 st.session_state.nickname = user_name
         
-        if st.button("Enter Chat", disabled=not user_name or len(user_name) > 12):
-            # # assign liberal or conservative group
-            # if "group_ideology" not in st.session_state:
-            #     st.session_state.group_ideology = random.choice(["liberal", "conservative"])
+        if st.button("Enter Chat", disabled=not user_name or len(user_name) > 15):
+            # assign liberal or conservative group
+            if "group_ideology" not in st.session_state:
+                st.session_state.group_ideology = random.choice(["liberal", "conservative"])
             
 
             # generate personas
@@ -181,11 +161,19 @@ def render_chat():
                 topic=st.session_state.assigned_topic  # force balanced topic
             )
 
-            # translate once per session if LANG == "ja"
-            speakers = [spk for spk, line in preset_messages]
-            lines = [line for spk, line in preset_messages]
-            translated = translate_seed_lines(tuple(lines))
-            preset_messages = list(zip(speakers, translated))
+            # if "selected_topic" in st.session_state:
+            #     topic_key, preset_messages = get_random_topic_and_messages(
+            #         st.session_state.group_ideology,
+            #         user_name,
+            #         st.session_state.group_members,
+            #         topic=st.session_state.selected_topic
+            #     )
+            # else:
+            #     topic_key, preset_messages = get_random_topic_and_messages(
+            #         st.session_state.group_ideology,
+            #         user_name,
+            #         st.session_state.group_members
+                # )
 
 
             st.session_state.selected_topic = topic_key
@@ -417,12 +405,9 @@ def render_chat():
                             "Maintain your ideological stance. Acknowledge differing views if needed, but do not shift your position. "
                             "Avoid personal talk like weekend plans or small talk."
                             "Use a natural, informal tone: contractions, everyday expressions, and casual style. "
-                            "Mimic how real people type, including slight disfluencies. "
+                            "Mimic how real people type, including slight disfluencies (like 'um', 'I guess', 'I mean'). "
                             "Vary the length and tone of your replies, sometimes short, sometimes more expressive. "
                             "Do not mention you're an AI or use overly formal language. "
-                            # --- language forcing ---
-                            "From now on, write **only in Japanese** in a natural, casual workplace style."
-                            "Do take into consideration that you are Japanese, speaking with Japanese coworkers."
                         )}] + context,
 
                         temperature=0.7
@@ -554,10 +539,6 @@ def render_chat():
                     "Stay on topic unless the participant changes it. "
                     "Maintain your ideological stance. You can acknowledge differing views politely, but do not shift your position. "
                     "Do not invent any other names outside this group."
-                    # --- language forcing ---
-                    "From now on, write **only in Japanese** in a natural, casual workplace style."
-                    "Do take into consideration that you are Japanese, speaking with Japanese coworkers."
-                    "Speak like how a Japanese would speak."
                     f"{style}"
                 )
 
